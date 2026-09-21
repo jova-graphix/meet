@@ -1,0 +1,1089 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lumina Meet — Real-time learning, beautifully simple</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%235b8cff'/%3E%3Cstop offset='1' stop-color='%237c5cff'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='16' fill='url(%23g)'/%3E%3Cpath d='M18 40 L32 20 L46 40' stroke='white' stroke-width='5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@1&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --blue:#5b8cff; --violet:#7c5cff; --green:#43d68c; --red:#ef4444;
+    --ink:#0a0c10; --panel:rgba(255,255,255,.055);
+  }
+  *{ -webkit-tap-highlight-color:transparent; }
+  html,body{ height:100%; }
+  body{ font-family:"Plus Jakarta Sans",system-ui,sans-serif; background:var(--ink); color:#fff; overflow:hidden; }
+  .serif{ font-family:"Instrument Serif",serif; font-style:italic; font-weight:400; }
+
+  body::after{
+    content:""; position:fixed; inset:0; z-index:70; pointer-events:none; opacity:.05; mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='.6'/%3E%3C/svg%3E");
+  }
+
+  .glass{ background:var(--panel); border:1px solid rgba(255,255,255,.09); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px); }
+  .glass-deep{ background:rgba(10,12,16,.72); border:1px solid rgba(255,255,255,.09); backdrop-filter:blur(22px); -webkit-backdrop-filter:blur(22px); }
+  .hairline{ border:1px solid rgba(255,255,255,.08); }
+
+  .grad-text{
+    background:linear-gradient(100deg,#8ab4ff 0%,#9d8cff 35%,#5eead4 70%,#8ab4ff 100%);
+    background-size:220% 100%; -webkit-background-clip:text; background-clip:text; color:transparent;
+    animation:gradpan 9s ease-in-out infinite;
+  }
+  @keyframes gradpan{ 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
+
+  .orb{ position:absolute; border-radius:9999px; filter:blur(90px); opacity:.5; animation:blob 16s ease-in-out infinite; will-change:transform; }
+  @keyframes blob{ 0%,100%{transform:translate(0,0) scale(1)} 33%{transform:translate(40px,-50px) scale(1.12)} 66%{transform:translate(-30px,30px) scale(.94)} }
+
+  .gridlines{
+    background-image:linear-gradient(rgba(255,255,255,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.045) 1px,transparent 1px);
+    background-size:56px 56px;
+    -webkit-mask-image:radial-gradient(ellipse 80% 70% at 50% 30%,#000 30%,transparent 75%);
+    mask-image:radial-gradient(ellipse 80% 70% at 50% 30%,#000 30%,transparent 75%);
+  }
+
+  @keyframes floaty{ 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
+  .floaty{ animation:floaty 6s ease-in-out infinite; }
+  @keyframes fadeUp{ from{opacity:0; transform:translateY(26px)} to{opacity:1; transform:translateY(0)} }
+  .fade-up{ opacity:0; animation:fadeUp .9s cubic-bezier(.22,1,.36,1) forwards; }
+
+  /* ---- tiles ---- */
+  .tile{ transition:box-shadow .35s ease, transform .35s ease; }
+  .tile.speaking{ box-shadow:0 0 0 2.5px var(--green), 0 8px 34px -6px rgba(67,214,140,.45); }
+  .avatar-fx::before,.avatar-fx::after{
+    content:""; position:absolute; border-radius:9999px; filter:blur(36px); opacity:.55; pointer-events:none;
+  }
+  .avatar-fx::before{ width:60%; height:60%; left:-12%; top:-10%; background:rgba(255,255,255,.35); animation:blob 12s ease-in-out infinite; }
+  .avatar-fx::after{ width:55%; height:55%; right:-12%; bottom:-14%; background:rgba(0,0,0,.28); animation:blob 14s ease-in-out infinite reverse; }
+
+  .vbar{ width:3.5px; border-radius:99px; background:#fff; height:12px; transform-origin:bottom; animation:vb 0.9s ease-in-out infinite; }
+  .vbar:nth-child(2){ animation-delay:.18s } .vbar:nth-child(3){ animation-delay:.36s }
+  @keyframes vb{ 0%,100%{transform:scaleY(.25)} 50%{transform:scaleY(1)} }
+
+  .mirror{ transform:scaleX(-1); }
+
+  /* ---- controls ---- */
+  .btn-ctl{ transition:transform .18s cubic-bezier(.34,1.56,.64,1), background .25s, box-shadow .25s; }
+  .btn-ctl:hover{ transform:translateY(-2px); }
+  .btn-ctl:active{ transform:scale(.88); }
+
+  .tip{ position:relative; }
+  .tip::after{
+    content:attr(data-tip); position:absolute; left:50%; bottom:calc(100% + 12px); transform:translateX(-50%) translateY(4px);
+    white-space:nowrap; background:#11141b; border:1px solid rgba(255,255,255,.12); color:#e8ecf4; font-size:11px; font-weight:600;
+    padding:5px 10px; border-radius:8px; opacity:0; pointer-events:none; transition:.2s; z-index:60;
+  }
+  .tip:hover::after{ opacity:1; transform:translateX(-50%) translateY(0); }
+  @media (max-width:768px){ .tip::after{ display:none } }
+
+  /* ---- toast ---- */
+  @keyframes toastIn{ from{opacity:0; transform:translateY(-14px) scale(.96)} to{opacity:1; transform:translateY(0) scale(1)} }
+  .toast{ animation:toastIn .35s cubic-bezier(.22,1,.36,1); }
+  .toast.out{ transition:.3s; opacity:0; transform:translateY(-10px); }
+
+  /* ---- rec ---- */
+  @keyframes recpulse{ 0%,100%{opacity:1} 50%{opacity:.25} }
+  .recdot{ animation:recpulse 1.2s ease-in-out infinite; }
+
+  /* ---- panel ---- */
+  @keyframes slideIn{ from{opacity:0; transform:translateX(24px)} to{opacity:1; transform:translateX(0)} }
+  .panel-in{ animation:slideIn .4s cubic-bezier(.22,1,.36,1); }
+
+  /* ---- chat typing ---- */
+  .tdot{ width:6px; height:6px; border-radius:99px; background:#9aa3b2; animation:vb 0.9s ease-in-out infinite; }
+  .tdot:nth-child(2){ animation-delay:.15s } .tdot:nth-child(3){ animation-delay:.3s }
+
+  @keyframes shimmer{ 0%{transform:translateX(-120%) skewX(-16deg)} 100%{transform:translateX(240%) skewX(-16deg)} }
+  .sheen{ position:absolute; inset:0; overflow:hidden; border-radius:inherit; pointer-events:none; }
+  .sheen::after{ content:""; position:absolute; top:0; bottom:0; width:40%; background:linear-gradient(90deg,transparent,rgba(255,255,255,.13),transparent); animation:shimmer 7s ease-in-out infinite; }
+
+  ::-webkit-scrollbar{ width:7px; height:7px }
+  ::-webkit-scrollbar-track{ background:transparent }
+  ::-webkit-scrollbar-thumb{ background:rgba(255,255,255,.14); border-radius:99px }
+  ::-webkit-scrollbar-thumb:hover{ background:rgba(255,255,255,.25) }
+
+  select{ background:#14171f; border:1px solid rgba(255,255,255,.12); border-radius:10px; padding:9px 12px; font-size:13px; width:100%; color:#e8ecf4; outline:none; }
+  input:focus{ outline:none; }
+  .kbd{ font-size:10px; font-weight:700; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.14); border-radius:6px; padding:2px 6px; }
+</style>
+</head>
+<body class="antialiased">
+
+<!-- ======================= AMBIENT FX ======================= -->
+<div class="fixed inset-0 pointer-events-none z-0">
+  <div class="orb w-[520px] h-[520px] bg-[#5b8cff] -top-40 -left-40 opacity-25"></div>
+  <div class="orb w-[460px] h-[460px] bg-[#7c5cff] top-1/3 -right-52 opacity-20" style="animation-delay:-6s"></div>
+  <div class="orb w-[380px] h-[380px] bg-[#2dd4bf] bottom-[-180px] left-1/3 opacity-[.12]" style="animation-delay:-3s"></div>
+  <div class="absolute inset-0 gridlines"></div>
+</div>
+
+<!-- ======================= HOME ======================= -->
+<section id="screen-home" class="relative z-10 h-full overflow-y-auto">
+  <nav class="flex items-center justify-between px-5 sm:px-10 py-5 max-w-[1400px] mx-auto w-full">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#5b8cff] to-[#7c5cff] grid place-items-center shadow-lg shadow-[#5b8cff]/30">
+        <i data-lucide="graduation-cap" class="w-5 h-5 text-white"></i>
+      </div>
+      <div class="leading-tight">
+        <p class="font-extrabold text-[17px] tracking-tight">Lumina Meet</p>
+        <p class="text-[11px] text-white/40 font-medium tracking-wide">LEARN TOGETHER, ANYWHERE</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-5">
+      <p id="clockHome" class="hidden sm:block text-sm text-white/50 font-medium"></p>
+      <div class="w-9 h-9 rounded-full bg-gradient-to-br from-[#2dd4bf] to-[#5b8cff] grid place-items-center text-xs font-bold">L</div>
+    </div>
+  </nav>
+
+  <main class="max-w-[1400px] mx-auto w-full px-5 sm:px-10 grid lg:grid-cols-2 gap-14 items-center pt-6 lg:pt-10 pb-16">
+    <div class="space-y-8">
+      <div class="fade-up inline-flex items-center gap-2 glass rounded-full px-4 py-2 text-[11px] font-bold tracking-[0.18em] text-white/70" style="animation-delay:.05s">
+        <i data-lucide="sparkles" class="w-3.5 h-3.5 text-[#8ab4ff]"></i> LIVE LEARNING, REIMAGINED
+      </div>
+      <h1 class="fade-up text-[44px] sm:text-[64px] leading-[1.02] font-extrabold tracking-tight" style="animation-delay:.15s">
+        Real-time learning,<br>
+        <span class="serif grad-text pr-2">beautifully</span> <span class="grad-text">simple.</span>
+      </h1>
+      <p class="fade-up text-white/55 text-[15px] sm:text-lg leading-relaxed max-w-md font-medium" style="animation-delay:.25s">
+        Meet, share your screen, and study with your class in crystal-clear video — no installs, no downloads. Just a link.
+      </p>
+
+      <div class="fade-up flex flex-wrap items-center gap-3" style="animation-delay:.35s">
+        <button onclick="newMeeting()" class="btn-ctl flex items-center gap-2.5 bg-[#4f7cff] hover:bg-[#6090ff] text-white font-bold text-sm px-6 py-4 rounded-2xl shadow-xl shadow-[#4f7cff]/30">
+          <i data-lucide="video" class="w-4.5 h-4.5"></i> New meeting
+        </button>
+        <div class="glass rounded-2xl flex items-center pl-4 pr-1.5 py-1.5 gap-2 focus-within:border-[#5b8cff]/50 transition">
+          <i data-lucide="keyboard" class="w-4 h-4 text-white/40 shrink-0"></i>
+          <input id="joinCodeInput" oninput="syncJoinBtn()" onkeydown="if(event.key==='Enter')joinFromInput()" placeholder="Enter a code or link" class="bg-transparent text-sm font-semibold placeholder:text-white/30 w-40 sm:w-48 py-2.5">
+          <button id="joinBtn" onclick="joinFromInput()" disabled class="btn-ctl text-sm font-bold px-4 py-2.5 rounded-xl text-white/30 transition">Join</button>
+        </div>
+      </div>
+
+      <div class="fade-up flex items-center gap-2 text-white/35 text-xs font-semibold" style="animation-delay:.45s">
+        <div class="flex -space-x-2">
+          <div class="w-7 h-7 rounded-full hairline bg-gradient-to-br from-[#6d5cff] to-[#3bb9ff] grid place-items-center text-[9px] font-bold">MC</div>
+          <div class="w-7 h-7 rounded-full hairline bg-gradient-to-br from-[#ff7ab8] to-[#ffb86b] grid place-items-center text-[9px] font-bold">AY</div>
+          <div class="w-7 h-7 rounded-full hairline bg-gradient-to-br from-[#34d399] to-[#22d3ee] grid place-items-center text-[9px] font-bold">JW</div>
+        </div>
+        <span>4,800+ learners met here today</span>
+      </div>
+    </div>
+
+    <!-- HERO MOCK -->
+    <div class="fade-up relative hidden lg:block" style="animation-delay:.3s">
+      <div id="heroCard" class="relative glass-deep rounded-3xl p-3 shadow-2xl shadow-black/60 max-w-[560px] mx-auto will-change-transform" style="transform-style:preserve-3d">
+        <div class="flex items-center justify-between px-2 pb-3">
+          <div class="flex items-center gap-1.5">
+            <span class="w-2.5 h-2.5 rounded-full bg-[#ff5f57]"></span><span class="w-2.5 h-2.5 rounded-full bg-[#febc2e]"></span><span class="w-2.5 h-2.5 rounded-full bg-[#28c840]"></span>
+          </div>
+          <p class="text-[11px] text-white/40 font-bold tracking-wide">lumina.meet/qmz-rdkp-tvh</p>
+        </div>
+        <div class="grid grid-cols-2 gap-2.5">
+          <div class="tile speaking relative rounded-2xl overflow-hidden h-40 bg-gradient-to-br from-[#1a2138] to-[#101527] grid place-items-center">
+            <div class="w-14 h-14 rounded-full bg-gradient-to-br from-[#5b8cff] to-[#7c5cff] grid place-items-center font-extrabold text-lg">H</div>
+            <span class="absolute left-2.5 bottom-2.5 text-[10px] font-bold bg-black/55 rounded-full px-2.5 py-1 flex items-center gap-1"><i data-lucide="star" class="w-2.5 h-2.5 text-[#f9ab00]"></i>Host</span>
+            <div class="absolute right-2.5 bottom-3 flex items-end gap-[3px]"><span class="vbar"></span><span class="vbar"></span><span class="vbar"></span></div>
+            <div class="sheen"></div>
+          </div>
+          <div class="relative rounded-2xl overflow-hidden h-40 bg-gradient-to-br from-[#0d2b24] to-[#0a1a2e] grid place-items-center">
+            <div class="w-14 h-14 rounded-full bg-gradient-to-br from-[#34d399] to-[#22d3ee] grid place-items-center font-extrabold text-lg">L</div>
+            <span class="absolute left-2.5 bottom-2.5 text-[10px] font-bold bg-black/55 rounded-full px-2.5 py-1">Learner</span>
+            <span class="absolute right-2.5 top-2.5 w-6 h-6 grid place-items-center rounded-full bg-[#f9ab00] text-black"><i data-lucide="hand" class="w-3.5 h-3.5"></i></span>
+            <div class="sheen"></div>
+          </div>
+          <div class="relative rounded-2xl overflow-hidden h-40 bg-[#0c0f16] p-4 col-span-2">
+            <p class="text-[10px] font-bold text-white/35 mb-3 tracking-wide">YOUR SCREEN IS BEING SHARED</p>
+            <div class="space-y-2.5">
+              <div class="h-2 rounded-full bg-[#5b8cff]/70 w-2/3"></div>
+              <div class="h-2 rounded-full bg-white/15 w-full"></div>
+              <div class="h-2 rounded-full bg-[#2dd4bf]/60 w-1/2 ml-6"></div>
+              <div class="h-2 rounded-full bg-white/10 w-5/6 ml-6"></div>
+              <div class="h-2 rounded-full bg-[#7c5cff]/70 w-1/3"></div>
+            </div>
+          </div>
+        </div>
+        <div class="flex items-center justify-center gap-2 pt-3.5 pb-1.5">
+          <span class="w-9 h-9 rounded-full bg-white/10 grid place-items-center"><i data-lucide="mic" class="w-4 h-4"></i></span>
+          <span class="w-9 h-9 rounded-full bg-white/10 grid place-items-center"><i data-lucide="video" class="w-4 h-4"></i></span>
+          <span class="w-9 h-9 rounded-full bg-[#5b8cff]/20 grid place-items-center text-[#8ab4ff]"><i data-lucide="monitor-up" class="w-4 h-4"></i></span>
+          <span class="w-9 h-9 rounded-full bg-[#ea4335] grid place-items-center"><i data-lucide="phone-off" class="w-4 h-4"></i></span>
+        </div>
+      </div>
+
+      <div class="floaty absolute -left-6 top-6 glass-deep rounded-2xl px-4 py-3 flex items-center gap-3 shadow-xl" style="animation-delay:-2s">
+        <span class="w-8 h-8 rounded-full bg-[#f9ab00]/20 grid place-items-center text-[#f9ab00]"><i data-lucide="hand" class="w-4 h-4"></i></span>
+        <div><p class="text-xs font-bold">A learner raised a hand</p><p class="text-[10px] text-white/40">Waiting to ask a question</p></div>
+      </div>
+      <div class="floaty absolute -right-3 top-1/3 glass-deep rounded-2xl px-4 py-3 flex items-center gap-3 shadow-xl">
+        <span class="w-8 h-8 rounded-full bg-[#5b8cff]/20 grid place-items-center text-[#8ab4ff]"><i data-lucide="monitor-up" class="w-4 h-4"></i></span>
+        <div><p class="text-xs font-bold">Screen sharing</p><p class="text-[10px] text-white/40">1080p · zero installs</p></div>
+      </div>
+      <div class="floaty absolute left-8 -bottom-6 glass-deep rounded-2xl px-4 py-3 flex items-center gap-3 shadow-xl" style="animation-delay:-4s">
+        <span class="recdot w-2.5 h-2.5 rounded-full bg-[#ef4444]"></span>
+        <div><p class="text-xs font-bold">Recording · Live captions</p><p class="text-[10px] text-white/40">Never miss a lesson again</p></div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="max-w-[1400px] mx-auto w-full px-5 sm:px-10 pb-10">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div class="glass rounded-2xl px-5 py-4 flex items-center gap-3"><i data-lucide="monitor-up" class="w-5 h-5 text-[#8ab4ff]"></i><div><p class="text-sm font-bold">HD screen share</p><p class="text-[11px] text-white/40">Present slides instantly</p></div></div>
+      <div class="glass rounded-2xl px-5 py-4 flex items-center gap-3"><i data-lucide="captions" class="w-5 h-5 text-[#2dd4bf]"></i><div><p class="text-sm font-bold">Live captions</p><p class="text-[11px] text-white/40">Speech-to-text, built in</p></div></div>
+      <div class="glass rounded-2xl px-5 py-4 flex items-center gap-3"><i data-lucide="shield-check" class="w-5 h-5 text-[#2dd4bf]"></i><div><p class="text-sm font-bold">Secure by design</p><p class="text-[11px] text-white/40">Private meeting codes</p></div></div>
+      <div class="glass rounded-2xl px-5 py-4 flex items-center gap-3"><i data-lucide="users" class="w-5 h-5 text-[#b49bff]"></i><div><p class="text-sm font-bold">Made for classes</p><p class="text-[11px] text-white/40">Hand raise · chat · more</p></div></div>
+    </div>
+  </footer>
+</section>
+
+<!-- ======================= LOBBY ======================= -->
+<section id="screen-lobby" class="relative z-10 h-full overflow-y-auto hidden">
+  <nav class="flex items-center justify-between px-5 sm:px-10 py-5 max-w-[1300px] mx-auto w-full">
+    <div class="flex items-center gap-4">
+      <button onclick="leaveLobby()" class="btn-ctl w-10 h-10 grid place-items-center rounded-full glass tip" data-tip="Back"><i data-lucide="chevron-left" class="w-5 h-5"></i></button>
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-[#5b8cff] to-[#7c5cff] grid place-items-center"><i data-lucide="graduation-cap" class="w-4.5 h-4.5 text-white"></i></div>
+        <p class="font-extrabold tracking-tight">Lumina Meet</p>
+      </div>
+    </div>
+    <p class="text-xs text-white/40 font-bold">Code · <span id="lobbyCode" class="text-white/70">—</span></p>
+  </nav>
+
+  <main class="max-w-[1300px] mx-auto w-full px-5 sm:px-10 grid lg:grid-cols-[1.4fr_1fr] gap-10 items-center pt-4 lg:pt-10 pb-16">
+    <div class="fade-up relative rounded-3xl overflow-hidden bg-[#10131b] hairline aspect-video shadow-2xl shadow-black/50" style="animation-delay:.1s">
+      <video id="previewVideo" autoplay playsinline muted class="absolute inset-0 w-full h-full object-cover mirror"></video>
+      <div id="previewAvatar" class="absolute inset-0 hidden avatar-fx bg-gradient-to-br from-[#5b8cff] to-[#7c5cff] grid place-items-center">
+        <div class="w-24 h-24 rounded-full bg-black/25 grid place-items-center text-3xl font-extrabold" id="previewInitials">G</div>
+      </div>
+      <span id="previewName" class="absolute left-4 bottom-4 text-xs font-bold bg-black/55 backdrop-blur rounded-full px-3.5 py-1.5">Guest</span>
+      <div class="absolute inset-0 grid place-items-center pointer-events-none">
+        <div class="flex items-center gap-4 pointer-events-auto mt-[22%]">
+          <button id="lobbyMicBtn" onclick="lobbyToggleMic()" class="btn-ctl tip w-14 h-14 rounded-full grid place-items-center bg-black/45 backdrop-blur border border-white/15 hover:bg-black/60" data-tip="Mute microphone"><i data-lucide="mic" class="w-5.5 h-5.5"></i></button>
+          <button id="lobbyCamBtn" onclick="lobbyToggleCam()" class="btn-ctl tip w-14 h-14 rounded-full grid place-items-center bg-black/45 backdrop-blur border border-white/15 hover:bg-black/60" data-tip="Turn off camera"><i data-lucide="video" class="w-5.5 h-5.5"></i></button>
+        </div>
+      </div>
+      <div id="previewConnecting" class="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-black/55 backdrop-blur rounded-full px-4 py-2 text-[11px] font-bold text-white/70">
+        <span class="w-2 h-2 rounded-full bg-[#f9ab00] animate-pulse"></span> Starting your camera…
+      </div>
+    </div>
+
+    <div class="fade-up space-y-7" style="animation-delay:.25s">
+      <div>
+        <p class="text-[11px] font-bold tracking-[0.2em] text-[#8ab4ff] mb-2">READY TO JOIN?</p>
+        <h2 class="text-3xl sm:text-[38px] font-extrabold tracking-tight leading-tight">Online Learning Session</h2>
+        <div class="flex flex-wrap items-center gap-3 mt-4">
+          <span id="lobbyRole" class="inline-flex items-center gap-2 text-[11px] font-bold rounded-full px-3.5 py-2 bg-[#4f7cff]/15 text-[#8ab4ff]"></span>
+          <p id="lobbyRoleNote" class="text-xs text-white/40 font-medium"></p>
+        </div>
+      </div>
+      <div>
+        <label class="text-xs font-bold text-white/45 tracking-wide">WHAT'S YOUR NAME?</label>
+        <input id="nameInput" oninput="syncNamePreview()" onkeydown="if(event.key==='Enter')joinMeeting()" placeholder="e.g. Ada Lovelace" class="mt-2 w-full glass rounded-2xl px-5 py-4 text-sm font-semibold placeholder:text-white/25 focus:border-[#5b8cff]/60 transition" maxlength="30">
+      </div>
+      <div class="flex items-center gap-3">
+        <button onclick="joinMeeting()" class="btn-ctl flex-1 sm:flex-none flex items-center justify-center gap-2.5 bg-[#4f7cff] hover:bg-[#6090ff] font-bold text-sm px-8 py-4 rounded-2xl shadow-xl shadow-[#4f7cff]/30">
+          <i data-lucide="video" class="w-4 h-4"></i> Join now
+        </button>
+        <button onclick="joinMeeting(true)" class="btn-ctl flex items-center gap-2.5 glass hover:bg-white/10 font-bold text-sm px-6 py-4 rounded-2xl text-white/80">
+          <i data-lucide="monitor-up" class="w-4 h-4"></i> Present
+        </button>
+      </div>
+      <div class="glass rounded-2xl flex items-center gap-2.5 pl-4 pr-1.5 py-1.5">
+        <i data-lucide="link-2" class="w-4 h-4 text-[#8ab4ff] shrink-0"></i>
+        <p id="lobbyShareLink" class="flex-1 truncate text-xs font-bold text-white/60"></p>
+        <button onclick="copyShareLink(state.code)" class="tip btn-ctl w-9 h-9 grid place-items-center rounded-xl bg-white/8 hover:bg-white/14 shrink-0" data-tip="Copy invite link"><i data-lucide="copy" class="w-4 h-4"></i></button>
+        <button onclick="shareInvite()" class="tip btn-ctl w-9 h-9 grid place-items-center rounded-xl bg-white/8 hover:bg-white/14 shrink-0" data-tip="Share invite"><i data-lucide="send" class="w-4 h-4"></i></button>
+      </div>
+      <p class="text-[11px] text-white/35 font-medium flex items-center gap-2"><i data-lucide="shield-check" class="w-3.5 h-3.5 text-[#2dd4bf]"></i> Your audio and video are only shared with this class.</p>
+    </div>
+  </main>
+</section>
+
+<!-- ======================= MEETING ======================= -->
+<section id="screen-meeting" class="fixed inset-0 z-20 hidden flex-col bg-[#0a0c12]">
+  <!-- top header -->
+  <header class="h-12 shrink-0 flex items-center justify-between px-4">
+    <div class="flex items-center gap-3 min-w-0">
+      <p id="meetTitle" class="text-sm font-bold truncate">Online Learning Session</p>
+      <button onclick="copyInfo()" class="tip hidden sm:flex items-center gap-1.5 text-[11px] font-bold text-white/50 hover:text-white/80 glass rounded-full px-3 py-1.5 transition" data-tip="Copy joining info"><span id="meetCodeTxt">—</span><i data-lucide="copy" class="w-3 h-3"></i></button>
+    </div>
+    <div class="flex items-center gap-2">
+      <span class="hidden sm:flex items-center gap-1.5 text-[11px] font-bold text-white/50 glass rounded-full px-3 py-1.5"><i data-lucide="clock" class="w-3 h-3"></i><span id="meetClock">00:00</span></span>
+      <span class="flex items-center gap-1.5 text-[11px] font-bold text-white/70 glass rounded-full px-3 py-1.5"><i data-lucide="users" class="w-3 h-3"></i><span id="meetCount">1</span></span>
+    </div>
+  </header>
+
+  <!-- presenting banner -->
+  <div id="presentBanner" class="hidden absolute left-1/2 -translate-x-1/2 top-14 z-30">
+    <div class="glass-deep rounded-full pl-4 pr-2 py-2 flex items-center gap-3 shadow-xl">
+      <span class="flex items-center gap-2 text-xs font-bold text-[#8ab4ff]"><i data-lucide="monitor-up" class="w-4 h-4"></i> You're sharing your screen</span>
+      <button onclick="stopPresent()" class="btn-ctl text-xs font-bold bg-white text-black rounded-full px-4 py-1.5 hover:bg-white/85">Stop sharing</button>
+    </div>
+  </div>
+
+  <!-- rec badge -->
+  <div id="recBadge" class="hidden absolute left-4 top-14 z-30 glass-deep rounded-full px-3.5 py-1.5 items-center gap-2">
+    <span class="recdot w-2.5 h-2.5 rounded-full bg-[#ef4444]"></span>
+    <span class="text-[11px] font-bold tracking-widest">REC</span>
+    <span id="recTime" class="text-[11px] font-bold text-white/50 tabular-nums">00:00</span>
+  </div>
+
+  <!-- stage -->
+  <main class="relative flex-1 min-h-0 px-3 pb-2">
+    <div id="grid" class="grid gap-2.5 h-full w-full"></div>
+    <div id="spotWrap" class="hidden h-full w-full flex-col md:flex-row gap-2.5">
+      <div id="spotSlot" class="flex-1 min-w-0 min-h-0"></div>
+      <div id="rail" class="shrink-0 flex md:flex-col gap-2.5 md:w-[218px] overflow-auto md:h-full h-[118px]"></div>
+    </div>
+
+    <!-- hand toast -->
+    <div id="handToast" class="hidden absolute left-1/2 -translate-x-1/2 bottom-4 z-30 glass-deep rounded-full pl-4 pr-2 py-2 flex items-center gap-3">
+      <span class="flex items-center gap-2 text-xs font-bold text-[#f9ab00]"><i data-lucide="hand" class="w-4 h-4"></i> You raised your hand</span>
+      <button onclick="toggleHand()" class="btn-ctl text-xs font-bold bg-white/10 hover:bg-white/20 rounded-full px-4 py-1.5">Lower</button>
+    </div>
+  </main>
+
+  <!-- captions -->
+  <div id="captionBar" class="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-[104px] z-30 hidden w-[92%] max-w-2xl text-center">
+    <span id="captionText" class="inline-block bg-black/75 backdrop-blur rounded-xl px-5 py-2.5 text-sm font-semibold leading-relaxed text-white/95">Listening…</span>
+  </div>
+
+  <!-- right panel -->
+  <aside id="panel" class="hidden absolute right-3 top-14 bottom-[104px] z-40 w-[92vw] max-w-[360px] rounded-3xl overflow-hidden glass-deep shadow-2xl shadow-black/50 flex-col"></aside>
+
+  <!-- bottom bar -->
+  <footer class="h-[96px] shrink-0 relative flex items-center justify-center px-4">
+    <div class="hidden md:flex absolute left-5 items-center gap-2 text-xs font-semibold text-white/45">
+      <span id="bottomClock" class="tabular-nums">00:00</span><span class="text-white/20">·</span><span id="bottomCode">—</span>
+    </div>
+
+    <div class="flex items-center gap-2 sm:gap-3">
+      <button id="btnMic" onclick="toggleMic()" class="tip btn-ctl w-12 h-12 sm:w-14 sm:h-14 rounded-full grid place-items-center glass" data-tip="Turn off microphone"></button>
+      <button id="btnCam" onclick="toggleCam()" class="tip btn-ctl w-12 h-12 sm:w-14 sm:h-14 rounded-full grid place-items-center glass" data-tip="Turn off camera"></button>
+      <button id="btnCc" onclick="toggleCaptions()" class="tip btn-ctl w-12 h-12 sm:w-14 sm:h-14 rounded-full grid place-items-center glass" data-tip="Turn on captions">
+        <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2.5" y="5" width="19" height="14" rx="4"/><path d="M10.5 10.2c-.4-.5-1-.8-1.7-.8-1.3 0-2.3 1.1-2.3 2.6s1 2.6 2.3 2.6c.7 0 1.3-.3 1.7-.8M18 10.2c-.4-.5-1-.8-1.7-.8-1.3 0-2.3 1.1-2.3 2.6s1 2.6 2.3 2.6c.7 0 1.3-.3 1.7-.8" stroke-linecap="round"/></svg>
+      </button>
+      <button id="btnPresent" onclick="togglePresent()" class="tip btn-ctl w-12 h-12 sm:w-14 sm:h-14 rounded-full grid place-items-center glass" data-tip="Present now"></button>
+      <button id="btnHand" onclick="toggleHand()" class="tip btn-ctl w-12 h-12 sm:w-14 sm:h-14 rounded-full grid place-items-center glass" data-tip="Raise hand"></button>
+      <div class="relative">
+        <button id="btnMore" onclick="toggleMore(event)" class="tip btn-ctl w-12 h-12 sm:w-14 sm:h-14 rounded-full grid place-items-center glass" data-tip="More options">
+          <span class="flex flex-col gap-[3.5px]"><span class="w-1.5 h-1.5 rounded-full bg-current"></span><span class="w-1.5 h-1.5 rounded-full bg-current"></span><span class="w-1.5 h-1.5 rounded-full bg-current"></span></span>
+        </button>
+        <div id="moreMenu" class="hidden absolute bottom-[72px] right-0 w-64 glass-deep rounded-2xl p-2 shadow-2xl">
+          <button onclick="toggleRecord()" class="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl hover:bg-white/8 text-left">
+            <span class="w-2.5 h-2.5 rounded-full bg-[#ef4444] shrink-0"></span><span id="recLabel" class="text-sm font-semibold">Start recording</span>
+          </button>
+          <button onclick="openSettings()" class="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl hover:bg-white/8 text-left">
+            <i data-lucide="settings" class="w-4 h-4 text-white/60"></i><span class="text-sm font-semibold">Audio & video settings</span>
+          </button>
+          <button onclick="copyInfo()" class="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl hover:bg-white/8 text-left">
+            <i data-lucide="copy" class="w-4 h-4 text-white/60"></i><span class="text-sm font-semibold">Copy joining info</span>
+          </button>
+          <div class="my-1.5 h-px bg-white/8"></div>
+          <div class="px-3.5 py-2 space-y-2">
+            <p class="text-[10px] font-bold tracking-[0.15em] text-white/35">KEYBOARD SHORTCUTS</p>
+            <p class="flex items-center justify-between text-xs font-semibold text-white/60">Mute microphone <span class="kbd">Ctrl D</span></p>
+            <p class="flex items-center justify-between text-xs font-semibold text-white/60">Toggle camera <span class="kbd">Ctrl E</span></p>
+          </div>
+        </div>
+      </div>
+      <button onclick="leaveMeeting()" class="tip btn-ctl ml-1 h-12 sm:h-14 px-5 rounded-full grid place-items-center bg-[#ea4335] hover:bg-[#f25446] shadow-lg shadow-[#ea4335]/25" data-tip="Leave call"><i data-lucide="phone-off" class="w-5 h-5"></i></button>
+    </div>
+
+    <div class="absolute right-5 flex items-center gap-2">
+      <button id="btnPeople" onclick="openPanel('people')" class="tip btn-ctl w-11 h-11 rounded-full grid place-items-center text-white/60 hover:bg-white/8" data-tip="Show everyone"><i data-lucide="users" class="w-5 h-5"></i></button>
+      <button id="btnChat" onclick="openPanel('chat')" class="tip btn-ctl relative w-11 h-11 rounded-full grid place-items-center text-white/60 hover:bg-white/8" data-tip="Chat with everyone">
+        <i data-lucide="message-square" class="w-5 h-5"></i>
+        <span id="unreadBadge" class="hidden absolute top-1 right-1 min-w-4 h-4 px-1 rounded-full bg-[#4f7cff] text-[9px] font-extrabold leading-4 text-center">0</span>
+      </button>
+      <button id="btnInfo" onclick="openPanel('info')" class="tip btn-ctl hidden sm:grid w-11 h-11 rounded-full place-items-center text-white/60 hover:bg-white/8" data-tip="Meeting details"><i data-lucide="info" class="w-5 h-5"></i></button>
+    </div>
+  </footer>
+</section>
+
+<!-- ======================= SETTINGS MODAL ======================= -->
+<div id="settingsModal" class="hidden fixed inset-0 z-50 place-items-center bg-black/60 backdrop-blur-sm px-4">
+  <div class="glass-deep rounded-3xl w-full max-w-md p-7 panel-in">
+    <div class="flex items-center justify-between mb-6">
+      <h3 class="font-extrabold text-lg tracking-tight">Audio & video</h3>
+      <button onclick="closeSettings()" class="btn-ctl w-9 h-9 grid place-items-center rounded-full hover:bg-white/10"><i data-lucide="x" class="w-4.5 h-4.5"></i></button>
+    </div>
+    <label class="text-xs font-bold text-white/45 tracking-wide">MICROPHONE</label>
+    <select id="micSelect" class="mt-2 mb-5"></select>
+    <label class="text-xs font-bold text-white/45 tracking-wide">CAMERA</label>
+    <select id="camSelect" class="mt-2"></select>
+    <button onclick="applyDevices()" class="btn-ctl mt-7 w-full bg-[#4f7cff] hover:bg-[#6090ff] font-bold text-sm py-3.5 rounded-2xl">Apply changes</button>
+  </div>
+</div>
+
+<!-- ======================= SHARE MODAL ======================= -->
+<div id="shareModal" class="hidden fixed inset-0 z-50 place-items-center bg-black/60 backdrop-blur-sm px-4">
+  <div class="glass-deep rounded-3xl w-full max-w-md p-7 panel-in relative">
+    <button onclick="closeShareModal()" class="btn-ctl absolute right-5 top-5 w-9 h-9 grid place-items-center rounded-full hover:bg-white/10"><i data-lucide="x" class="w-4.5 h-4.5"></i></button>
+    <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#5b8cff] to-[#7c5cff] grid place-items-center shadow-lg shadow-[#5b8cff]/30 mb-5">
+      <i data-lucide="link-2" class="w-6 h-6 text-white"></i>
+    </div>
+    <h3 class="font-extrabold text-xl tracking-tight">Your meeting&rsquo;s ready</h3>
+    <p class="text-sm text-white/50 font-medium mt-1.5 mb-5 leading-relaxed">Share this link with your class — anyone who opens it lands straight in the join screen.</p>
+    <div class="glass rounded-2xl flex items-center gap-2.5 pl-4 pr-1.5 py-1.5">
+      <i data-lucide="link-2" class="w-4 h-4 text-[#8ab4ff] shrink-0"></i>
+      <p id="shareLinkText" class="flex-1 truncate text-xs font-bold text-white/70"></p>
+      <button onclick="copyShareLink()" class="tip btn-ctl w-9 h-9 grid place-items-center rounded-xl bg-white/8 hover:bg-white/14 shrink-0" data-tip="Copy link"><i data-lucide="copy" class="w-4 h-4"></i></button>
+    </div>
+    <div class="grid grid-cols-2 gap-2.5 mt-3">
+      <button onclick="shareInvite()" class="btn-ctl flex items-center justify-center gap-2 glass hover:bg-white/10 font-bold text-sm py-3.5 rounded-2xl text-white/85"><i data-lucide="send" class="w-4 h-4"></i> Share invite</button>
+      <button onclick="startFromModal()" class="btn-ctl flex items-center justify-center gap-2 bg-[#4f7cff] hover:bg-[#6090ff] font-bold text-sm py-3.5 rounded-2xl shadow-lg shadow-[#4f7cff]/30"><i data-lucide="video" class="w-4 h-4"></i> Start now</button>
+    </div>
+    <p class="text-[11px] text-white/35 font-medium flex items-center gap-2 mt-5"><i data-lucide="shield-check" class="w-3.5 h-3.5 text-[#2dd4bf]"></i> Only people with this link can join the class.</p>
+  </div>
+</div>
+
+<!-- toasts -->
+<div id="toasts" class="fixed top-5 left-1/2 -translate-x-1/2 z-[80] flex flex-col items-center gap-2.5 pointer-events-none w-[94%] max-w-md"></div>
+
+<script>
+/* ============================================================
+   STATE
+============================================================ */
+const state = {
+  code:'', displayName:'Guest', inMeeting:false, wantPresent:false, isHost:false,
+  stream:null, screenStream:null, micOn:true, camOn:true,
+  presenting:false, pinned:null, hand:false, captionsOn:false,
+  panel:null, unread:0, msgs:[], recording:false, recorder:null, recChunks:[], recSec:0,
+  meetSec:0, startedAt:0, timers:[], intervals:[], rafId:null,
+  actx:null, analyser:null, levelAvg:0, recognition:null, capIdx:0, devices:{mic:[],cam:[]},
+};
+let P = [];
+const $ = id => document.getElementById(id);
+const initials = n => n.split(' ').filter(Boolean).map(w=>w[0]).slice(0,2).join('').toUpperCase();
+const later = (fn,ms)=>{ const t=setTimeout(fn,ms); state.timers.push(t); return t; };
+const every = (fn,ms)=>{ const t=setInterval(fn,ms); state.intervals.push(t); return t; };
+const refreshIcons = ()=> window.lucide && lucide.createIcons();
+const fmt = s => { const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60; return (h?String(h).padStart(2,'0')+':':'')+String(m).padStart(2,'0')+':'+String(x).padStart(2,'0'); };
+
+/* ============================================================
+   TOASTS
+============================================================ */
+function toast(msg, opts={}){
+  const el=document.createElement('div');
+  el.className='toast pointer-events-auto glass-deep rounded-2xl px-4 py-3 flex items-center gap-3 text-sm font-semibold shadow-2xl max-w-full';
+  el.innerHTML=`<span class="w-7 h-7 shrink-0 rounded-full grid place-items-center ${opts.color||'bg-[#5b8cff]/20 text-[#8ab4ff]'}"><i data-lucide="${opts.icon||'check'}" class="w-3.5 h-3.5"></i></span><span class="leading-snug">${msg}</span>${opts.action||''}`;
+  $('toasts').appendChild(el); refreshIcons();
+  setTimeout(()=>{ el.classList.add('out'); setTimeout(()=>el.remove(),320); }, opts.duration||4200);
+}
+function sound(freq=680,dur=.09){
+  try{
+    if(!state.actx) return;
+    const o=state.actx.createOscillator(), g=state.actx.createGain();
+    o.frequency.value=freq; o.type='sine'; g.gain.setValueAtTime(.12,state.actx.currentTime);
+    g.gain.exponentialRampToValueAtTime(.0001,state.actx.currentTime+dur);
+    o.connect(g).connect(state.actx.destination); o.start(); o.stop(state.actx.currentTime+dur);
+  }catch(e){}
+}
+
+/* ============================================================
+   CLOCKS
+============================================================ */
+function startClocks(){
+  const upd=()=>{
+    const d=new Date();
+    const t=d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+    const full=t+' · '+d.toLocaleDateString([], {weekday:'short',month:'short',day:'numeric'});
+    if($('clockHome')) $('clockHome').textContent=full;
+    if($('bottomClock')) $('bottomClock').textContent=t;
+  };
+  upd(); setInterval(upd,1000);
+}
+
+/* ============================================================
+   HOME / NAVIGATION
+============================================================ */
+const genCode = ()=>{ const r=n=>Array.from({length:n},()=>'abcdefghijklmnopqrstuvwxyz'[Math.random()*26|0]).join(''); return `${r(3)}-${r(4)}-${r(3)}`; };
+function showScreen(name){
+  ['home','lobby','meeting'].forEach(s=>$('screen-'+s).classList.add('hidden'));
+  $('screen-meeting').classList.remove('flex');
+  $('screen-'+name).classList.remove('hidden');
+  if(name==='meeting') $('screen-meeting').classList.add('flex');
+  document.title = name==='meeting' ? `Meet — ${state.code}` : 'Lumina Meet — Real-time learning, beautifully simple';
+  refreshIcons();
+}
+function syncJoinBtn(){
+  const v=$('joinCodeInput').value.trim();
+  const b=$('joinBtn');
+  b.disabled=!v;
+  b.className = 'btn-ctl text-sm font-bold px-4 py-2.5 rounded-xl transition ' + (v ? 'bg-[#4f7cff] text-white shadow-lg shadow-[#4f7cff]/30' : 'text-white/30');
+}
+function newMeeting(){
+  const code=genCode(); state.code=code; state.isHost=true;
+  openShareModal(code);
+}
+
+/* ============================================================
+   SHARING / INVITE LINKS
+============================================================ */
+let pendingCode=null;
+function shareLink(code){
+  try{
+    if(location.protocol==='http:'||location.protocol==='https:') return `${location.origin}${location.pathname}#join/${code}`;
+    return `${location.href.split('#')[0]}#join/${code}`;
+  }catch(e){ return `https://lumina.meet/#join/${code}`; }
+}
+function displayLink(code){
+  try{
+    if(location.hostname) return `${location.host}${location.pathname}#join/${code}`;
+  }catch(e){}
+  return `lumina.meet/#join/${code}`;
+}
+function openShareModal(code){
+  pendingCode=code;
+  $('shareLinkText').textContent=displayLink(code);
+  $('shareModal').classList.remove('hidden'); $('shareModal').classList.add('grid');
+  refreshIcons();
+}
+function closeShareModal(){ $('shareModal').classList.add('hidden'); $('shareModal').classList.remove('grid'); }
+function startFromModal(){ const c=pendingCode; closeShareModal(); enterLobby(c); }
+async function copyShareLink(code=pendingCode||state.code){
+  const link=shareLink(code);
+  const ok=()=>toast('Meeting link copied — send it to your class.',{icon:'link-2'});
+  try{ await navigator.clipboard.writeText(link); ok(); }
+  catch(e){ fallbackCopy(link,ok); }
+}
+function shareInvite(){
+  const code=pendingCode||state.code;
+  const data={ title:'Join my class on Lumina Meet', text:'Class is live — tap the link to join instantly:', url:shareLink(code) };
+  if(navigator.share){ navigator.share(data).catch(()=>{}); }
+  else copyShareLink(code);
+}
+function checkDeepLink(){
+  const m=(location.hash||'').match(/join\/([a-z0-9-]{3,})/i);
+  if(!m) return;
+  const code=m[1].toLowerCase();
+  state.isHost=false;
+  setTimeout(()=>{
+    enterLobby(code);
+    later(()=>toast('You opened an invite link — add your name and hit <b>Join now</b>.',{icon:'sparkles',duration:6000}),700);
+  },350);
+}
+function joinFromInput(){
+  let v=$('joinCodeInput').value.trim().toLowerCase().replace('lumina.meet/','').replace(/^https?:\/\//,'').replace('lumina.meet/','');
+  if(!/^[a-z0-9-]{3,}$/.test(v)){ toast('That code does not look right. Try something like qmz-rdkp-tvh.',{icon:'info',color:'bg-[#ef4444]/20 text-[#ef4444]'}); return; }
+  state.isHost=false;
+  enterLobby(v);
+}
+
+/* ============================================================
+   LOBBY
+============================================================ */
+async function enterLobby(code){
+  state.code=code;
+  $('lobbyCode').textContent=code;
+  $('lobbyShareLink').textContent=displayLink(code);
+  $('lobbyRole').innerHTML=`<i data-lucide="${state.isHost?'star':'users'}" class="w-3.5 h-3.5"></i>${state.isHost?'You are the host of this class':'You join as a learner'}`;
+  $('lobbyRole').className=`inline-flex items-center gap-2 text-[11px] font-bold rounded-full px-3.5 py-2 ${state.isHost?'bg-[#f9ab00]/15 text-[#f9ab00]':'bg-[#4f7cff]/15 text-[#8ab4ff]'}`;
+  $('lobbyRoleNote').textContent=state.isHost?'Share the invite link so everyone can join.':'Check your mic and camera, then join the class.';
+  showScreen('lobby');
+  refreshIcons();
+  await initLobbyStream();
+}
+async function initLobbyStream(){
+  $('previewConnecting').classList.remove('hidden');
+  state.stream?.getTracks().forEach(t=>t.stop()); state.stream=null;
+  try{
+    const s=await navigator.mediaDevices.getUserMedia({audio:true,video:{width:{ideal:1280},height:{ideal:720}}});
+    state.stream=s;
+    $('previewVideo').srcObject=s;
+    initAudio(s);
+    cacheDevices();
+  }catch(e){
+    state.stream=null; state.micOn=false; state.camOn=false;
+    toast('Camera or microphone not available — you can still join.',{icon:'video-off',color:'bg-[#f9ab00]/20 text-[#f9ab00]'});
+  }
+  $('previewConnecting').classList.add('hidden');
+  syncLobbyPreview();
+}
+function syncLobbyPreview(){
+  const hasVideo = state.stream && state.stream.getVideoTracks().length && state.camOn;
+  $('previewVideo').style.opacity = hasVideo ? '1':'0';
+  $('previewAvatar').classList.toggle('hidden', !!hasVideo);
+  const name = ($('nameInput').value.trim()||'Guest');
+  $('previewInitials').textContent=initials(name);
+  $('previewName').textContent=name;
+  $('lobbyMicBtn').innerHTML=`<i data-lucide="${state.micOn?'mic':'mic-off'}" class="w-5.5 h-5.5"></i>`;
+  $('lobbyCamBtn').innerHTML=`<i data-lucide="${state.camOn?'video':'video-off'}" class="w-5.5 h-5.5"></i>`;
+  $('lobbyMicBtn').classList.toggle('bg-[#ea4335]', !state.micOn);
+  $('lobbyCamBtn').classList.toggle('bg-[#ea4335]', !state.camOn);
+  refreshIcons();
+}
+function syncNamePreview(){ const n=$('nameInput').value.trim()||'Guest'; $('previewName').textContent=n; $('previewInitials').textContent=initials(n); }
+function lobbyToggleMic(){ state.micOn=!state.micOn; enforceTracks(); syncLobbyPreview(); }
+function lobbyToggleCam(){ state.camOn=!state.camOn; enforceTracks(); syncLobbyPreview(); }
+function leaveLobby(){ state.stream?.getTracks().forEach(t=>t.stop()); state.stream=null; showScreen('home'); }
+function enforceTracks(){
+  if(!state.stream) return;
+  state.stream.getAudioTracks().forEach(t=>t.enabled=state.micOn);
+  state.stream.getVideoTracks().forEach(t=>t.enabled=state.camOn);
+}
+async function cacheDevices(){
+  try{
+    const ds=await navigator.mediaDevices.enumerateDevices();
+    state.devices.mic=ds.filter(d=>d.kind==='audioinput');
+    state.devices.cam=ds.filter(d=>d.kind==='videoinput');
+  }catch(e){}
+}
+
+/* ============================================================
+   AUDIO LEVEL (speaking ring)
+============================================================ */
+function initAudio(stream){
+  try{
+    if(!stream || !stream.getAudioTracks().length) return;
+    if(!state.actx) state.actx=new (window.AudioContext||window.webkitAudioContext)();
+    state.actx.resume?.();
+    const src=state.actx.createMediaStreamSource(stream);
+    state.analyser=state.actx.createAnalyser(); state.analyser.fftSize=256;
+    src.connect(state.analyser);
+    if(!state.rafId) levelLoop();
+  }catch(e){}
+}
+function levelLoop(){
+  state.rafId=requestAnimationFrame(levelLoop);
+  if(!state.analyser) return;
+  const data=new Uint8Array(state.analyser.frequencyBinCount);
+  state.analyser.getByteFrequencyData(data);
+  const level=data.reduce((a,b)=>a+b,0)/data.length/255;
+  state.levelAvg=state.levelAvg*.8+level*.2;
+  const you=P.find(p=>p.id==='you');
+  if(you){
+    const speaking = state.micOn && state.levelAvg>0.045;
+    if(speaking!==you.speaking){ you.speaking=speaking; updateTile(you); }
+  }
+}
+
+/* ============================================================
+   MEETING — JOIN
+============================================================ */
+async function joinMeeting(withPresent=false){
+  state.displayName=($('nameInput').value.trim()||'Guest').slice(0,30);
+  state.wantPresent=withPresent;
+  if(!state.stream){
+    try{ state.stream=await navigator.mediaDevices.getUserMedia({audio:true,video:true}); state.micOn=state.camOn=true; initAudio(state.stream); cacheDevices(); }
+    catch(e){ state.micOn=false; state.camOn=false; }
+  }
+  enforceTracks();
+  P=[ {id:'you',name:state.displayName,role:state.isHost?'Host':'Learner',c:['#5b8cff','#7c5cff'],you:true,host:state.isHost,muted:!state.micOn,speaking:false,hand:false} ];
+  state.inMeeting=true; state.startedAt=Date.now(); state.meetSec=0; state.unread=0; state.panel=null; state.msgs=[];
+  $('meetCodeTxt').textContent=state.code; $('bottomCode').textContent=state.code;
+  showScreen('meeting');
+  renderStructure(); syncControlBtns(); updateCounts();
+  every(()=>{ state.meetSec++; $('meetClock').textContent=fmt(state.meetSec); },1000);
+  $('meetClock').textContent='00:00';
+  sound(720,.08);
+  toast(`You joined as <b>${state.displayName}</b>`,{icon:'video'});
+  if(state.isHost) later(()=>toast('You are the <b>host</b> — share the invite link to bring your class in.',{icon:'star',color:'bg-[#f9ab00]/20 text-[#f9ab00]',duration:6000}),1400);
+  if(withPresent) later(()=>togglePresent(),600);
+}
+
+/* ============================================================
+   CONTROLS
+============================================================ */
+function setCtl(btn,iconOn,iconOff,on,tip){
+  btn.innerHTML=`<i data-lucide="${on?iconOn:iconOff}" class="w-5 h-5"></i>`;
+  btn.classList.toggle('bg-[#ea4335]', !on);
+  btn.classList.toggle('text-white', true);
+  btn.dataset.tip=tip;
+  refreshIcons();
+}
+function syncControlBtns(){
+  setCtl($('btnMic'),'mic','mic-off',state.micOn, state.micOn?'Turn off microphone':'Turn on microphone');
+  setCtl($('btnCam'),'video','video-off',state.camOn, state.camOn?'Turn off camera':'Turn on camera');
+  const pr=$('btnPresent');
+  pr.innerHTML=`<i data-lucide="monitor-up" class="w-5 h-5"></i>`;
+  pr.classList.toggle('bg-[#4f7cff]', state.presenting);
+  pr.dataset.tip=state.presenting?'Stop presenting':'Present now';
+  const hd=$('btnHand');
+  hd.innerHTML=`<i data-lucide="hand" class="w-5 h-5"></i>`;
+  hd.classList.toggle('bg-[#f9ab00]', state.hand); hd.classList.toggle('text-black', state.hand);
+  hd.dataset.tip=state.hand?'Lower hand':'Raise hand';
+  $('btnCc').classList.toggle('bg-white', state.captionsOn);
+  $('btnCc').classList.toggle('text-black', state.captionsOn);
+  $('handToast').classList.toggle('hidden', !state.hand);
+  $('presentBanner').classList.toggle('hidden', !state.presenting);
+  refreshIcons();
+}
+function toggleMic(){
+  state.micOn=!state.micOn;
+  if(!state.stream && state.micOn){ reacquire({audio:true}); return; }
+  enforceTracks();
+  P.find(p=>p.id==='you').muted=!state.micOn;
+  updateTile(P.find(p=>p.id==='you')); syncControlBtns();
+  toast(state.micOn?'Microphone on':'Microphone off',{icon:state.micOn?'mic':'mic-off',duration:1600});
+}
+function toggleCam(){
+  state.camOn=!state.camOn;
+  if(!state.stream && state.camOn){ reacquire({video:true}); return; }
+  enforceTracks();
+  renderStructure(); syncControlBtns();
+}
+async function reacquire(constraints){
+  try{
+    const s=await navigator.mediaDevices.getUserMedia({audio:constraints.audio??true,video:constraints.video??true});
+    state.stream=s; initAudio(s); enforceTracks();
+    P.find(p=>p.id==='you').muted=!state.micOn;
+    renderStructure(); syncControlBtns();
+  }catch(e){ toast('Permission denied by the browser.',{icon:'info',color:'bg-[#ef4444]/20 text-[#ef4444]'}); syncControlBtns(); }
+}
+function toggleHand(){
+  state.hand=!state.hand;
+  P.find(p=>p.id==='you').hand=state.hand;
+  updateTile(P.find(p=>p.id==='you')); syncControlBtns();
+  if(state.panel==='people') renderPanel();
+  if(state.hand) toast('Your hand is raised — everyone in the class can see it.',{icon:'hand',color:'bg-[#f9ab00]/20 text-[#f9ab00]'});
+}
+function togglePresent(){
+  if(state.presenting){ stopPresent(); return; }
+  if(!navigator.mediaDevices?.getDisplayMedia){ toast('Screen sharing is not supported in this browser.',{icon:'info',color:'bg-[#ef4444]/20 text-[#ef4444]'}); return; }
+  navigator.mediaDevices.getDisplayMedia({video:{frameRate:{ideal:20}},audio:false}).then(s=>{
+    state.screenStream=s; state.presenting=true;
+    s.getVideoTracks()[0].addEventListener('ended',()=>stopPresent());
+    renderStructure(); syncControlBtns();
+    toast('You are presenting to everyone.',{icon:'monitor-up'});
+  }).catch(()=>toast('Screen share was cancelled.',{icon:'monitor-up',color:'bg-white/10 text-white/60'}));
+}
+function stopPresent(){
+  state.screenStream?.getTracks().forEach(t=>t.stop());
+  state.screenStream=null; state.presenting=false;
+  renderStructure(); syncControlBtns();
+}
+
+/* ============================================================
+   CAPTIONS
+============================================================ */
+function toggleCaptions(){
+  state.captionsOn=!state.captionsOn;
+  $('captionBar').classList.toggle('hidden', !state.captionsOn);
+  $('btnCc').classList.toggle('bg-white', state.captionsOn);
+  $('btnCc').classList.toggle('text-black', state.captionsOn);
+  if(state.captionsOn){
+    $('captionText').textContent='Listening…';
+    startRecognition();
+  } else {
+    try{ state.recognition?.abort(); }catch(e){}
+  }
+}
+function setCaption(text,speaker){
+  if(!state.captionsOn||!text) return;
+  $('captionText').textContent=(speaker?speaker+': ':'')+text;
+}
+function startRecognition(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){ toast('Live captions are not supported in this browser — Chrome recommended.',{icon:'info'}); return; }
+  try{
+    const rec=new SR(); state.recognition=rec;
+    rec.lang='en-US'; rec.continuous=true; rec.interimResults=true;
+    let lastFinal='';
+    rec.onresult=e=>{
+      let interim='';
+      for(let i=e.resultIndex;i<e.results.length;i++){
+        const t=e.results[i][0].transcript;
+        if(e.results[i].isFinal) lastFinal=t; else interim+=t;
+      }
+      setCaption(interim||lastFinal,state.displayName.split(' ')[0]);
+    };
+    rec.onend=()=>{ if(state.captionsOn&&state.inMeeting){ try{rec.start()}catch(e){} } };
+    rec.onerror=()=>{};
+    rec.start();
+  }catch(e){}
+}
+
+/* ============================================================
+   RECORDING
+============================================================ */
+function toggleRecord(){
+  $('moreMenu').classList.add('hidden');
+  if(state.recording){ stopRecord(); return; }
+  try{
+    const tracks=[];
+    const v = state.presenting&&state.screenStream ? state.screenStream.getVideoTracks()[0] : state.stream?.getVideoTracks()[0];
+    if(v) tracks.push(v);
+    const a = state.stream?.getAudioTracks()[0];
+    if(a) tracks.push(a);
+    if(!tracks.length){ toast('Nothing to record — turn on your camera or share your screen first.',{icon:'info'}); return; }
+    let rec;
+    try{ rec=new MediaRecorder(new MediaStream(tracks),{mimeType:'video/webm;codecs=vp9,opus'}); }
+    catch(e){ rec=new MediaRecorder(new MediaStream(tracks)); }
+    state.recorder=rec; state.recChunks=[]; state.recSec=0;
+    rec.ondataavailable=e=>{ if(e.data.size) state.recChunks.push(e.data); };
+    rec.onstop=downloadRecording;
+    rec.start(1000);
+    state.recording=true;
+    $('recBadge').classList.remove('hidden'); $('recBadge').classList.add('flex'); $('recLabel').textContent='Stop recording';
+    every(()=>{ state.recSec++; $('recTime').textContent=fmt(state.recSec); },1000);
+    toast(`Recording started — ${state.presenting?'capturing your shared screen':'capturing your camera and mic'}.`,{icon:'circle',color:'bg-[#ef4444]/20 text-[#ef4444]'});
+  }catch(e){ toast('Recording is not supported in this browser.',{icon:'info',color:'bg-[#ef4444]/20 text-[#ef4444]'}); }
+}
+function stopRecord(){
+  if(!state.recording) return;
+  state.recording=false;
+  try{ state.recorder.stop(); }catch(e){}
+  $('recBadge').classList.add('hidden'); $('recBadge').classList.remove('flex'); $('recLabel').textContent='Start recording';
+}
+function downloadRecording(){
+  const blob=new Blob(state.recChunks,{type:'video/webm'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=`lumina-meet-${state.code.replaceAll('-','')}.webm`; a.textContent='Download recording'; a.className='ml-2 shrink-0 text-[11px] font-extrabold bg-[#4f7cff] rounded-full px-3 py-1.5 hover:bg-[#6090ff]';
+  toast('Recording saved.',{icon:'check',action:a.outerHTML,duration:12000});
+}
+
+/* ============================================================
+   TILES / RENDERING
+============================================================ */
+function avatarInner(p,big){
+  return `<div class="absolute inset-0 avatar-fx grid place-items-center" style="background:linear-gradient(135deg,${p.c[0]},${p.c[1]})">
+    <div class="${big?'w-28 h-28 text-4xl':'w-14 h-14 md:w-20 md:h-20 text-lg md:text-2xl'} rounded-full bg-black/25 grid place-items-center font-extrabold backdrop-blur-sm">${initials(p.name)}</div>
+    <div class="sheen"></div></div>`;
+}
+function tileHTML(p,small=false){
+  const camOn = p.you ? (state.camOn && state.stream && state.stream.getVideoTracks().length) : false;
+  return `<div class="tile group relative rounded-2xl overflow-hidden hairline bg-[#10131b] cursor-pointer ${small?'w-[168px] md:w-full h-[104px] md:h-[126px] shrink-0':'h-full w-full'}" data-pid="${p.id}">
+    ${camOn ? `<video data-src="self" autoplay playsinline muted class="absolute inset-0 w-full h-full object-cover mirror"></video>` : avatarInner(p)}
+    <div class="chip-mic ${p.muted?'':'hidden'} absolute right-3 top-3 w-6 h-6 grid place-items-center rounded-full bg-black/60 backdrop-blur"><i data-lucide="mic-off" class="w-3 h-3 text-[#ff8a80]"></i></div>
+    <div class="chip-hand ${p.hand?'':'hidden'} absolute right-3 top-3 w-7 h-7 grid place-items-center rounded-full bg-[#f9ab00] text-black shadow-lg"><i data-lucide="hand" class="w-3.5 h-3.5"></i></div>
+    <span class="absolute left-3 bottom-3 text-[11px] font-bold bg-black/55 backdrop-blur rounded-full px-3 py-1.5 flex items-center gap-1.5">${p.host?'<i data-lucide="star" class="w-3 h-3 text-[#f9ab00]"></i>':''}${p.you?p.name+' (You)':p.name}</span>
+    <div class="vb-wrap hidden absolute right-3 bottom-4 items-end gap-[3px] bg-black/45 rounded-full px-2 py-1.5"><span class="vbar"></span><span class="vbar"></span><span class="vbar"></span></div>
+    <button onclick="event.stopPropagation();pinTile('${p.id}')" class="tip opacity-0 group-hover:opacity-100 transition absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 glass-deep rounded-full px-4 py-2 text-xs font-bold flex items-center gap-2" data-tip="Pin"><i data-lucide="pin" class="w-3.5 h-3.5"></i>Pin</button>
+  </div>`;
+}
+function screenHTML(){
+  return `<div class="tile relative rounded-2xl overflow-hidden hairline bg-black h-full w-full">
+    <video data-src="screen" autoplay playsinline muted class="absolute inset-0 w-full h-full object-contain bg-black"></video>
+    <span class="absolute left-3 top-3 text-[11px] font-bold bg-black/60 backdrop-blur rounded-full px-3 py-1.5 flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-[#2dd4bf] animate-pulse"></span>Your screen · You are presenting</span>
+  </div>`;
+}
+function renderStructure(){
+  const spotlight = state.presenting || state.pinned;
+  $('grid').classList.toggle('hidden', !!spotlight);
+  $('spotWrap').classList.toggle('hidden', !spotlight);
+  $('spotWrap').classList.toggle('flex', !!spotlight);
+  if(!spotlight){
+    const n=P.length, w=innerWidth;
+    const cols = n===1?1 : n===2?(w>700?2:1) : n<=4?2 : n<=9?(w>760?3:2) : 4;
+    const rows = Math.ceil(n/cols);
+    const g=$('grid');
+    g.style.gridTemplateColumns=`repeat(${cols},minmax(0,1fr))`;
+    g.style.gridTemplateRows=`repeat(${rows},minmax(0,1fr))`;
+    g.innerHTML=P.map(p=>tileHTML(p)).join('');
+  } else {
+    $('spotSlot').innerHTML = state.presenting ? screenHTML() : tileHTML(P.find(p=>p.id===state.pinned)||P[0]);
+    $('rail').innerHTML = P.map(p=>tileHTML(p,true)).join('');
+  }
+  attachVideos(); refreshIcons(); updateCounts();
+}
+function attachVideos(){
+  document.querySelectorAll('video[data-src="self"]').forEach(v=>{ if(v.srcObject!==state.stream){ v.srcObject=state.stream; } });
+  document.querySelectorAll('video[data-src="screen"]').forEach(v=>{ if(state.screenStream && v.srcObject!==state.screenStream){ v.srcObject=state.screenStream; } });
+}
+function updateTile(p){
+  document.querySelectorAll(`[data-pid="${p.id}"]`).forEach(el=>{
+    el.classList.toggle('speaking', !!p.speaking);
+    el.querySelector('.vb-wrap')?.classList.toggle('hidden', !p.speaking);
+    el.querySelector('.vb-wrap')?.classList.toggle('flex', !!p.speaking);
+    const mic=el.querySelector('.chip-mic'); if(mic) mic.classList.toggle('hidden', !p.muted);
+    const hand=el.querySelector('.chip-hand'); if(hand) hand.classList.toggle('hidden', !p.hand);
+  });
+}
+function pinTile(id){ state.pinned = state.pinned===id?null:id; renderStructure(); }
+function updateCounts(){ $('meetCount').textContent=P.length; if(state.panel==='people') renderPanel(); }
+
+/* ============================================================
+   CHAT
+============================================================ */
+function appendBubble(r){
+  const el=document.createElement('div');
+  el.className='flex gap-2.5 '+(r.me?'flex-row-reverse':'');
+  el.innerHTML=`<div class="w-7 h-7 shrink-0 rounded-full grid place-items-center text-[9px] font-extrabold" style="background:linear-gradient(135deg,${r.c[0]},${r.c[1]})">${initials(r.name)}</div>
+    <div class="max-w-[78%] ${r.me?'text-right':''}">
+      <p class="text-[10px] font-bold text-white/35 mb-1">${r.me?'You':r.name} · ${r.time}</p>
+      <p class="text-[13px] font-medium leading-relaxed px-4 py-2.5 rounded-2xl ${r.me?'bg-[#4f7cff] rounded-tr-md text-white':'bg-white/8 rounded-tl-md text-white/90'}">${r.text}</p>
+    </div>`;
+  $('chatEmpty')?.remove();
+  const list=$('chatList');
+  if(list){ list.appendChild(el); list.scrollTop=list.scrollHeight; }
+}
+function addMessage(from,text){
+  const me=from.id==='you';
+  const who = me? {name:state.displayName,c:['#5b8cff','#7c5cff']} : from;
+  const r={ me, name:who.name, c:who.c, text, time:new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) };
+  state.msgs.push(r);
+  appendBubble(r);
+  if(state.panel!=='chat'&&state.inMeeting){ state.unread++; const b=$('unreadBadge'); b.textContent=state.unread; b.classList.remove('hidden'); sound(520,.05); }
+}
+function sendChat(){
+  const inp=$('chatInput'); const t=inp.value.trim(); if(!t) return;
+  inp.value='';
+  addMessage({id:'you'},t.replace(/[<>]/g,''));
+}
+
+/* ============================================================
+   SIDE PANELS
+============================================================ */
+function openPanel(name){
+  state.panel = state.panel===name?null:name;
+  if(state.panel){
+    $('panel').classList.remove('hidden'); $('panel').classList.add('flex','panel-in');
+    renderPanel();
+    if(state.panel==='chat'){ state.unread=0; $('unreadBadge').classList.add('hidden'); }
+  } else { $('panel').classList.add('hidden'); $('panel').classList.remove('flex'); }
+  ['people','chat','info'].forEach(k=>$('btn'+k[0].toUpperCase()+k.slice(1)).classList.toggle('text-[#8ab4ff]', state.panel===k));
+  refreshIcons();
+}
+function renderPanel(){
+  if(!state.panel) return;
+  const heads={people:['users','Everyone'],chat:['message-square','In-call messages'],info:['info','Meeting details']};
+  const [icon,title]=heads[state.panel];
+  let body='';
+  if(state.panel==='chat'){
+    body=`<div id="chatList" class="flex-1 overflow-y-auto p-4 space-y-4"></div>
+      <div class="p-3 border-t border-white/8">
+        <div class="glass rounded-2xl flex items-center gap-2 pl-4 pr-1.5 py-1.5 focus-within:border-[#5b8cff]/50">
+          <input id="chatInput" onkeydown="if(event.key==='Enter')sendChat()" placeholder="Send a message" class="flex-1 bg-transparent text-sm font-medium py-2 placeholder:text-white/30" maxlength="300">
+          <button onclick="sendChat()" class="btn-ctl w-9 h-9 grid place-items-center rounded-xl bg-[#4f7cff]"><i data-lucide="send" class="w-4 h-4"></i></button>
+        </div>
+        <p class="text-[10px] text-white/30 font-semibold mt-2 text-center">Messages are visible to everyone in the class</p>
+      </div>`;
+  } else if(state.panel==='people'){
+    body=`<div class="p-3 border-b border-white/8"><div class="glass rounded-2xl flex items-center gap-2 px-4 py-2.5"><i data-lucide="search" class="w-4 h-4 text-white/35"></i><input oninput="renderPeopleList(this.value)" placeholder="Search people" class="flex-1 bg-transparent text-sm font-medium placeholder:text-white/30"></div></div>
+      <div id="peopleList" class="flex-1 overflow-y-auto p-3 space-y-1"></div>`;
+  } else {
+    body=`<div class="flex-1 overflow-y-auto p-5 space-y-5">
+      <div class="glass rounded-2xl p-4">
+        <p class="text-[10px] font-bold tracking-[0.15em] text-white/35 mb-2">JOINING LINK</p>
+        <p class="text-sm font-bold text-[#8ab4ff] mb-3 truncate" title="${displayLink(state.code)}">${displayLink(state.code)}</p>
+        <button onclick="copyInfo()" class="btn-ctl w-full flex items-center justify-center gap-2 bg-white/8 hover:bg-white/14 font-bold text-xs py-3 rounded-xl"><i data-lucide="copy" class="w-3.5 h-3.5"></i> Copy joining info</button>
+      </div>
+      <div class="glass rounded-2xl p-4 space-y-3">
+        <p class="flex justify-between text-xs font-semibold"><span class="text-white/40">Subject</span><span>Online Learning Session</span></p>
+        <p class="flex justify-between text-xs font-semibold"><span class="text-white/40">Host</span><span>${state.isHost?'You':'The meeting creator'}</span></p>
+        <p class="flex justify-between text-xs font-semibold"><span class="text-white/40">You joined as</span><span>${state.displayName}</span></p>
+        <p class="flex justify-between text-xs font-semibold"><span class="text-white/40">Your role</span><span class="${state.isHost?'text-[#f9ab00]':''}">${state.isHost?'Host':'Learner'}</span></p>
+        <p class="flex justify-between text-xs font-semibold"><span class="text-white/40">Duration</span><span id="infoDur" class="tabular-nums">${fmt(state.meetSec)}</span></p>
+      </div>
+      <p class="text-[11px] text-white/35 font-medium flex items-start gap-2"><i data-lucide="shield-check" class="w-4 h-4 text-[#2dd4bf] shrink-0"></i>Only people with this code can join. Media stays on your device until you share it.</p>
+    </div>`;
+  }
+  $('panel').innerHTML=`<div class="flex items-center justify-between px-5 py-4 border-b border-white/8 shrink-0">
+      <p class="font-extrabold text-[15px] flex items-center gap-2.5"><i data-lucide="${icon}" class="w-4.5 h-4.5 text-white/50"></i>${title}${state.panel==='people'?` <span class="text-white/35 text-xs font-bold">(${P.length})</span>`:''}</p>
+      <button onclick="openPanel('${state.panel}')" class="btn-ctl w-8 h-8 grid place-items-center rounded-full hover:bg-white/10"><i data-lucide="x" class="w-4 h-4"></i></button>
+    </div>${body}`;
+  refreshIcons();
+  if(state.panel==='people') renderPeopleList('');
+  if(state.panel==='chat'){
+    state.msgs.forEach(appendBubble);
+    if(!state.msgs.length&&$('chatList')) $('chatList').innerHTML=`<div id="chatEmpty" class="h-full grid place-items-center py-14 text-center"><div><div class="w-12 h-12 mx-auto rounded-2xl bg-white/6 grid place-items-center mb-3"><i data-lucide="message-square" class="w-5 h-5 text-white/30"></i></div><p class="text-sm font-bold text-white/45">No messages yet</p><p class="text-xs text-white/30 font-medium mt-1 max-w-[210px]">Messages you send here are visible to everyone in the class.</p></div></div>`;
+    refreshIcons();
+    const l=$('chatList'); if(l) l.scrollTop=l.scrollHeight; $('chatInput').focus();
+  }
+}
+function renderPeopleList(q){
+  const list=$('peopleList'); if(!list) return;
+  const sorted=[...P].sort((a,b)=>(b.hand-a.hand)||(b.host-a.host)||(a.you?-1:1));
+  list.innerHTML=sorted.filter(p=>p.name.toLowerCase().includes(q.toLowerCase())).map(p=>`
+    <div class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/6">
+      <div class="relative">
+        <div class="w-9 h-9 rounded-full grid place-items-center text-[10px] font-extrabold ${p.speaking?'ring-2 ring-[#43d68c]':''}" style="background:linear-gradient(135deg,${p.you?'#5b8cff,#7c5cff':p.c[0]+','+p.c[1]})">${initials(p.name)}</div>
+        ${p.hand?'<span class="absolute -bottom-1 -right-1 w-[18px] h-[18px] grid place-items-center rounded-full bg-[#f9ab00]"><i data-lucide="hand" class="w-2.5 h-2.5 text-black"></i></span>':''}
+      </div>
+      <div class="flex-1 min-w-0"><p class="text-sm font-bold truncate">${p.name}${p.you?' (You)':''}</p><p class="text-[10px] font-bold text-white/35">${p.host?'HOST · TEACHER':(p.role||'LEARNER').toUpperCase()}</p></div>
+      ${p.muted?'<i data-lucide="mic-off" class="w-4 h-4 text-[#ff8a80]"></i>':'<i data-lucide="mic" class="w-4 h-4 text-[#43d68c]"></i>'}
+    </div>`).join('');
+  refreshIcons();
+}
+
+/* ============================================================
+   MISC UI
+============================================================ */
+function toggleMore(e){ e.stopPropagation(); $('moreMenu').classList.toggle('hidden'); }
+document.addEventListener('click',e=>{ if(!$('moreMenu').classList.contains('hidden') && !e.target.closest('#btnMore')) $('moreMenu').classList.add('hidden'); });
+function copyInfo(){
+  const txt=`Join my class on Lumina Meet: ${shareLink(state.code)}`;
+  const done=()=>toast('Joining info copied to clipboard.',{icon:'copy'});
+  if(navigator.clipboard?.writeText) navigator.clipboard.writeText(txt).then(done).catch(()=>fallbackCopy(txt,done));
+  else fallbackCopy(txt,done);
+}
+function fallbackCopy(txt,cb){ const ta=document.createElement('textarea'); ta.value=txt; document.body.appendChild(ta); ta.select(); try{document.execCommand('copy')}catch(e){} ta.remove(); cb(); }
+function openSettings(){
+  $('moreMenu').classList.add('hidden');
+  const fill=(sel,list)=>{ sel.innerHTML=(list.length?list:[{label:'Default device',deviceId:''}]).map((d,i)=>`<option value="${d.deviceId}">${d.label||'Device '+(i+1)}</option>`).join(''); };
+  fill($('micSelect'),state.devices.mic); fill($('camSelect'),state.devices.cam);
+  $('settingsModal').classList.remove('hidden'); $('settingsModal').classList.add('grid'); refreshIcons();
+}
+function closeSettings(){ $('settingsModal').classList.add('hidden'); $('settingsModal').classList.remove('grid'); }
+async function applyDevices(){
+  const mic=$('micSelect').value, cam=$('camSelect').value;
+  closeSettings();
+  try{
+    const s=await navigator.mediaDevices.getUserMedia({
+      audio: mic?{deviceId:{exact:mic}}:true,
+      video: cam?{deviceId:{exact:cam}}:true,
+    });
+    state.stream?.getTracks().forEach(t=>t.stop());
+    state.stream=s; initAudio(s); enforceTracks();
+    renderStructure();
+    toast('Devices updated.',{icon:'settings'});
+  }catch(e){ toast('Could not switch devices — check permissions.',{icon:'info',color:'bg-[#ef4444]/20 text-[#ef4444]'}); }
+}
+
+/* ============================================================
+   LEAVE
+============================================================ */
+function leaveMeeting(){
+  stopRecord();
+  stopPresent();
+  try{ state.recognition?.abort(); }catch(e){}
+  state.captionsOn=false;
+  state.stream?.getTracks().forEach(t=>t.stop());
+  state.stream=null;
+  state.timers.forEach(clearTimeout); state.intervals.forEach(clearInterval);
+  state.timers=[]; state.intervals=[];
+  state.inMeeting=false; state.presenting=false; state.pinned=null; state.hand=false; state.panel=null;
+  state.micOn=true; state.camOn=true; state.unread=0;
+  P=[]; $('grid').innerHTML=''; $('rail').innerHTML=''; $('spotSlot').innerHTML=''; $('panel').classList.add('hidden'); $('panel').classList.remove('flex');
+  $('unreadBadge').classList.add('hidden'); $('handToast').classList.add('hidden'); $('recBadge').classList.add('hidden'); $('recBadge').classList.remove('flex');
+  $('captionBar').classList.add('hidden');
+  $('btnCc').classList.remove('bg-white','text-black');
+  showScreen('home');
+  toast('You left the meeting.',{icon:'phone-off',color:'bg-[#ef4444]/20 text-[#ef4444]'});
+}
+
+/* ============================================================
+   KEYBOARD SHORTCUTS + PARALLAX
+============================================================ */
+document.addEventListener('keydown',e=>{
+  if(!state.inMeeting) return;
+  const k=e.key.toLowerCase();
+  if((e.ctrlKey||e.metaKey)&&k==='d'){ e.preventDefault(); toggleMic(); }
+  if((e.ctrlKey||e.metaKey)&&k==='e'){ e.preventDefault(); toggleCam(); }
+  if(k==='escape'){ if(state.panel) openPanel(state.panel); }
+});
+function initParallax(){
+  const card=$('heroCard'); if(!card) return;
+  const wrap=card.parentElement;
+  wrap.addEventListener('mousemove',e=>{
+    const r=wrap.getBoundingClientRect();
+    const x=(e.clientX-r.left)/r.width-.5, y=(e.clientY-r.top)/r.height-.5;
+    card.style.transform=`perspective(1100px) rotateY(${x*10}deg) rotateX(${-y*8}deg)`;
+  });
+  wrap.addEventListener('mouseleave',()=>{ card.style.transition='transform .8s cubic-bezier(.22,1,.36,1)'; card.style.transform='perspective(1100px) rotateY(0) rotateX(0)'; setTimeout(()=>card.style.transition='',800); });
+}
+
+/* ============================================================
+   BOOT
+============================================================ */
+addEventListener('resize',()=>{ if(state.inMeeting) renderStructure(); });
+startClocks(); initParallax(); refreshIcons(); checkDeepLink();
+</script>
+</body>
+</html>
