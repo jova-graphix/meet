@@ -1292,10 +1292,18 @@
         <i data-lucide="images" class="w-5 h-5 text-crimson"></i>
         <h2 class="font-display font-semibold text-2xl">Gallery Images</h2>
       </div>
-      <form id="gallery-form" class="grid sm:grid-cols-[1fr_1fr_auto] gap-3 bg-white border border-ink/10 rounded-xl p-5 mb-6">
-        <input type="file" id="gallery-file" accept="image/*" required class="text-sm file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-ink file:text-paper file:text-xs file:font-semibold file:cursor-pointer" />
-        <input type="text" id="gallery-caption" placeholder="Caption, e.g. Regional Conference — Tamale" required class="border border-ink/20 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-crimson" />
-        <button type="submit" class="btn inline-flex items-center justify-center gap-2 bg-crimson text-paper px-5 py-2.5 rounded-lg font-semibold text-sm whitespace-nowrap"><span class="btn-fill bg-ink"></span><i data-lucide="upload" class="w-4 h-4"></i> Add Image</button>
+      <form id="gallery-form" class="bg-white border border-ink/10 rounded-xl p-5 mb-6 space-y-3">
+        <div class="grid sm:grid-cols-[1fr_1fr] gap-3">
+          <div>
+            <input type="file" id="gallery-file" accept="image/*" class="text-sm file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-ink file:text-paper file:text-xs file:font-semibold file:cursor-pointer" />
+            <p id="gallery-file-hint" class="hidden text-[11px] text-ink-soft mt-1.5">Leave empty to keep the current image.</p>
+          </div>
+          <input type="text" id="gallery-caption" placeholder="Caption, e.g. Regional Conference — Tamale" required class="border border-ink/20 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-crimson" />
+        </div>
+        <div class="flex items-center gap-2">
+          <button type="submit" class="btn flex-1 sm:flex-none inline-flex items-center justify-center gap-2 bg-crimson text-paper px-5 py-2.5 rounded-lg font-semibold text-sm whitespace-nowrap"><span class="btn-fill bg-ink"></span><i data-lucide="upload" class="w-4 h-4"></i> <span id="gallery-submit-label">Add Image</span></button>
+          <button type="button" id="gallery-cancel" class="hidden w-10 h-10 shrink-0 rounded-lg border border-ink/20 flex items-center justify-center hover:border-crimson hover:text-crimson" aria-label="Cancel edit" title="Cancel edit"><i data-lucide="x" class="w-4 h-4"></i></button>
+        </div>
       </form>
       <div id="admin-gallery-list" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4"><!-- populated by renderAdminGallery() --></div>
     </div>
@@ -1463,7 +1471,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 import {
   getFirestore, collection, doc, addDoc, deleteDoc, setDoc, updateDoc, deleteField,
-  onSnapshot, query, orderBy, serverTimestamp, getDocs, getDoc
+  onSnapshot, query, orderBy, serverTimestamp, Timestamp, getDocs, getDoc
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -1616,7 +1624,7 @@ async function seedIfEmpty(name, col, snapshot) {
   if (seededAlready[name] || !snapshot.empty) { seededAlready[name] = true; return; }
   seededAlready[name] = true;
   for (const item of SEED_CONTENT[name]) {
-    try { await addDoc(col, { ...item, createdAt: serverTimestamp() }); }
+    try { await addDoc(col, { ...item, createdAt: Timestamp.now() }); }
     catch (e) { console.error('Seed failed for ' + name, e); }
   }
 }
@@ -1689,7 +1697,7 @@ function galleryCardHTML(item, variant) {
   // variant: 'strip' (home-page horizontal scroller — fixed width, no delete),
   // 'grid' (full gallery page — fills its grid cell, no delete),
   // 'admin' (dashboard manager — fills its grid cell, has delete button).
-  const sizing = variant === 'strip' ? 'snap-start shrink-0 w-[270px] sm:w-[340px]' : 'w-full';
+  const sizing = variant === 'strip' ? 'snap-start shrink-0 w-[86vw] sm:w-[420px]' : 'w-full';
   const withDelete = variant === 'admin';
   const aspectClass = variant === 'grid' ? 'aspect-[4/5] sm:aspect-[4/3]' : 'aspect-[4/3]';
   const captionClass = variant === 'grid' ? 'tick text-ink-soft mt-3.5 text-[13px] sm:text-[9.5px]' : 'tick text-ink-soft mt-3';
@@ -1698,7 +1706,11 @@ function galleryCardHTML(item, variant) {
     <figure class="g-card ${sizing} relative group">
       <div class="rounded-xl overflow-hidden ${aspectClass} bg-cream border border-ink/10"><img src="${item.src}" alt="${escapeHTML(item.caption)}" class="w-full h-full object-cover" loading="lazy" /></div>
       <figcaption class="${captionClass}"${captionStyle}>${escapeHTML(item.caption)}</figcaption>
-      ${withDelete ? `<button data-remove-gallery="${item.id}" class="absolute top-2 right-2 w-8 h-8 rounded-lg bg-ink/80 text-paper flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" aria-label="Remove image"><i data-lucide="trash-2" class="w-4 h-4"></i></button>` : ''}
+      ${withDelete ? `
+      <div class="absolute top-2 right-2 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+        <button data-edit-gallery="${item.id}" class="w-8 h-8 rounded-lg bg-ink/80 text-paper flex items-center justify-center" aria-label="Edit image"><i data-lucide="pencil" class="w-4 h-4"></i></button>
+        <button data-remove-gallery="${item.id}" class="w-8 h-8 rounded-lg bg-ink/80 text-paper flex items-center justify-center" aria-label="Remove image"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+      </div>` : ''}
     </figure>`;
 }
 function renderGallery() {
@@ -2221,26 +2233,56 @@ document.getElementById('admin-siteimg-home').addEventListener('click', handleRe
 document.getElementById('admin-siteimg-executives').addEventListener('click', handleResetSiteImage);
 
 /* ───────── Admin: Gallery form + delete ───────── */
+let editingGalleryId = null;
+function resetGalleryForm() {
+  editingGalleryId = null;
+  document.getElementById('gallery-form').reset();
+  document.getElementById('gallery-file-hint').classList.add('hidden');
+  document.getElementById('gallery-submit-label').textContent = 'Add Image';
+  document.getElementById('gallery-cancel').classList.add('hidden');
+}
+document.getElementById('gallery-cancel').addEventListener('click', resetGalleryForm);
 document.getElementById('gallery-form').addEventListener('submit', async e => {
   e.preventDefault();
   const fileInput = document.getElementById('gallery-file');
   const caption = document.getElementById('gallery-caption').value.trim();
   const file = fileInput.files[0];
-  if (!file || !caption) return;
+  if (!caption) return;
+  if (!editingGalleryId && !file) return; // a new image needs a photo
   try {
-    const src = await fileToDataURL(file);
-    await addDoc(galleryCol, { src, caption, createdAt: serverTimestamp() });
-    e.target.reset();
+    const updates = { caption };
+    if (file) updates.src = await fileToDataURL(file);
+    if (editingGalleryId) {
+      await updateDoc(doc(db, 'gallery', editingGalleryId), updates);
+    } else {
+      await addDoc(galleryCol, { ...updates, createdAt: Timestamp.now() });
+    }
+    resetGalleryForm();
   } catch (err) {
     console.error('Could not save gallery image.', err);
     alert('Could not save — the image may be too large. Try a smaller image.');
   }
 });
 document.getElementById('admin-gallery-list').addEventListener('click', async e => {
-  const btn = e.target.closest('[data-remove-gallery]');
-  if (!btn) return;
-  try { await deleteDoc(doc(db, 'gallery', btn.dataset.removeGallery)); }
-  catch (err) { console.error('Could not remove image.', err); alert('Could not remove image.'); }
+  const editBtn = e.target.closest('[data-edit-gallery]');
+  if (editBtn) {
+    const item = siteContent.gallery.find(g => g.id === editBtn.dataset.editGallery);
+    if (!item) return;
+    editingGalleryId = item.id;
+    document.getElementById('gallery-caption').value = item.caption;
+    document.getElementById('gallery-file').value = '';
+    document.getElementById('gallery-file-hint').classList.remove('hidden');
+    document.getElementById('gallery-submit-label').textContent = 'Save Changes';
+    document.getElementById('gallery-cancel').classList.remove('hidden');
+    document.getElementById('gallery-form').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
+  }
+  const delBtn = e.target.closest('[data-remove-gallery]');
+  if (!delBtn) return;
+  try {
+    await deleteDoc(doc(db, 'gallery', delBtn.dataset.removeGallery));
+    if (editingGalleryId === delBtn.dataset.removeGallery) resetGalleryForm();
+  } catch (err) { console.error('Could not remove image.', err); alert('Could not remove image.'); }
 });
 
 /* ───────── Publication lightbox (Read button — every publication is a single image) ───────── */
@@ -2297,7 +2339,7 @@ document.getElementById('pub-form').addEventListener('submit', async e => {
     if (editingPubId) {
       await updateDoc(doc(db, 'publications', editingPubId), updates);
     } else {
-      await addDoc(pubsCol, { ...updates, createdAt: serverTimestamp() });
+      await addDoc(pubsCol, { ...updates, createdAt: Timestamp.now() });
     }
     resetPubForm();
   } catch (err) {
@@ -2350,7 +2392,7 @@ document.getElementById('notice-form').addEventListener('submit', async e => {
     if (editingNoticeId) {
       await updateDoc(doc(db, 'notices', editingNoticeId), { date, text });
     } else {
-      await addDoc(noticesCol, { date, text, createdAt: serverTimestamp() });
+      await addDoc(noticesCol, { date, text, createdAt: Timestamp.now() });
     }
     resetNoticeForm();
   } catch (err) {
@@ -2389,7 +2431,7 @@ document.getElementById('doc-form').addEventListener('submit', async e => {
   if (!file || !label) return;
   try {
     const data = await fileToDataURL(file);
-    await addDoc(docsCol, { label, icon, filename: file.name, data, createdAt: serverTimestamp() });
+    await addDoc(docsCol, { label, icon, filename: file.name, data, createdAt: Timestamp.now() });
     e.target.reset();
   } catch (err) {
     console.error('Could not save document.', err);
