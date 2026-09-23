@@ -1,0 +1,1214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lumina Meet — Real-time learning, beautifully simple</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%235b8cff'/%3E%3Cstop offset='1' stop-color='%237c5cff'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='16' fill='url(%23g)'/%3E%3Cpath d='M18 40 L32 20 L46 40' stroke='white' stroke-width='5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@1&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --blue:#5b8cff; --violet:#7c5cff; --green:#43d68c; --red:#ef4444;
+    --ink:#0a0c10; --panel:rgba(255,255,255,.055);
+  }
+  *{ -webkit-tap-highlight-color:transparent; }
+  html,body{ height:100%; }
+  body{ font-family:"Plus Jakarta Sans",system-ui,sans-serif; background:var(--ink); color:#fff; overflow:hidden; }
+  .serif{ font-family:"Instrument Serif",serif; font-style:italic; font-weight:400; }
+
+  body::after{
+    content:""; position:fixed; inset:0; z-index:70; pointer-events:none; opacity:.05; mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='.6'/%3E%3C/svg%3E");
+  }
+
+  .glass{ background:var(--panel); border:1px solid rgba(255,255,255,.09); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px); }
+  .glass-deep{ background:rgba(10,12,16,.72); border:1px solid rgba(255,255,255,.09); backdrop-filter:blur(22px); -webkit-backdrop-filter:blur(22px); }
+  .hairline{ border:1px solid rgba(255,255,255,.08); }
+
+  .grad-text{
+    background:linear-gradient(100deg,#8ab4ff 0%,#9d8cff 35%,#5eead4 70%,#8ab4ff 100%);
+    background-size:220% 100%; -webkit-background-clip:text; background-clip:text; color:transparent;
+    animation:gradpan 9s ease-in-out infinite;
+  }
+  @keyframes gradpan{ 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
+
+  .orb{ position:absolute; border-radius:9999px; filter:blur(90px); opacity:.5; animation:blob 16s ease-in-out infinite; will-change:transform; }
+  @keyframes blob{ 0%,100%{transform:translate(0,0) scale(1)} 33%{transform:translate(40px,-50px) scale(1.12)} 66%{transform:translate(-30px,30px) scale(.94)} }
+
+  .gridlines{
+    background-image:linear-gradient(rgba(255,255,255,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.045) 1px,transparent 1px);
+    background-size:56px 56px;
+    -webkit-mask-image:radial-gradient(ellipse 80% 70% at 50% 30%,#000 30%,transparent 75%);
+    mask-image:radial-gradient(ellipse 80% 70% at 50% 30%,#000 30%,transparent 75%);
+  }
+
+  @keyframes floaty{ 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
+  .floaty{ animation:floaty 6s ease-in-out infinite; }
+  @keyframes fadeUp{ from{opacity:0; transform:translateY(26px)} to{opacity:1; transform:translateY(0)} }
+  .fade-up{ opacity:0; animation:fadeUp .9s cubic-bezier(.22,1,.36,1) forwards; }
+
+  /* ---- tiles ---- */
+  .tile{ transition:box-shadow .35s ease, transform .35s ease; }
+  .tile.speaking{ box-shadow:0 0 0 2.5px var(--green), 0 8px 34px -6px rgba(67,214,140,.45); }
+  .avatar-fx::before,.avatar-fx::after{
+    content:""; position:absolute; border-radius:9999px; filter:blur(36px); opacity:.55; pointer-events:none;
+  }
+  .avatar-fx::before{ width:60%; height:60%; left:-12%; top:-10%; background:rgba(255,255,255,.35); animation:blob 12s ease-in-out infinite; }
+  .avatar-fx::after{ width:55%; height:55%; right:-12%; bottom:-14%; background:rgba(0,0,0,.28); animation:blob 14s ease-in-out infinite reverse; }
+
+  .vbar{ width:3.5px; border-radius:99px; background:#fff; height:12px; transform-origin:bottom; animation:vb 0.9s ease-in-out infinite; }
+  .vbar:nth-child(2){ animation-delay:.18s } .vbar:nth-child(3){ animation-delay:.36s }
+  @keyframes vb{ 0%,100%{transform:scaleY(.25)} 50%{transform:scaleY(1)} }
+
+  .mirror{ transform:scaleX(-1); }
+
+  /* ---- controls ---- */
+  .btn-ctl{ transition:transform .18s cubic-bezier(.34,1.56,.64,1), background .25s, box-shadow .25s; }
+  .btn-ctl:hover{ transform:translateY(-2px); }
+  .btn-ctl:active{ transform:scale(.88); }
+
+  .tip{ position:relative; }
+  .tip::after{
+    content:attr(data-tip); position:absolute; left:50%; bottom:calc(100% + 12px); transform:translateX(-50%) translateY(4px);
+    white-space:nowrap; background:#11141b; border:1px solid rgba(255,255,255,.12); color:#e8ecf4; font-size:11px; font-weight:600;
+    padding:5px 10px; border-radius:8px; opacity:0; pointer-events:none; transition:.2s; z-index:60;
+  }
+  .tip:hover::after{ opacity:1; transform:translateX(-50%) translateY(0); }
+  @media (max-width:768px){ .tip::after{ display:none } }
+
+  /* ---- toast ---- */
+  @keyframes toastIn{ from{opacity:0; transform:translateY(-14px) scale(.96)} to{opacity:1; transform:translateY(0) scale(1)} }
+  .toast{ animation:toastIn .35s cubic-bezier(.22,1,.36,1); }
+  .toast.out{ transition:.3s; opacity:0; transform:translateY(-10px); }
+
+  /* ---- rec ---- */
+  @keyframes recpulse{ 0%,100%{opacity:1} 50%{opacity:.25} }
+  .recdot{ animation:recpulse 1.2s ease-in-out infinite; }
+
+  /* ---- panel ---- */
+  @keyframes slideIn{ from{opacity:0; transform:translateX(24px)} to{opacity:1; transform:translateX(0)} }
+  .panel-in{ animation:slideIn .4s cubic-bezier(.22,1,.36,1); }
+
+  /* ---- chat typing ---- */
+  .tdot{ width:6px; height:6px; border-radius:99px; background:#9aa3b2; animation:vb 0.9s ease-in-out infinite; }
+  .tdot:nth-child(2){ animation-delay:.15s } .tdot:nth-child(3){ animation-delay:.3s }
+
+  @keyframes shimmer{ 0%{transform:translateX(-120%) skewX(-16deg)} 100%{transform:translateX(240%) skewX(-16deg)} }
+  .sheen{ position:absolute; inset:0; overflow:hidden; border-radius:inherit; pointer-events:none; }
+  .sheen::after{ content:""; position:absolute; top:0; bottom:0; width:40%; background:linear-gradient(90deg,transparent,rgba(255,255,255,.13),transparent); animation:shimmer 7s ease-in-out infinite; }
+
+  ::-webkit-scrollbar{ width:7px; height:7px }
+  ::-webkit-scrollbar-track{ background:transparent }
+  ::-webkit-scrollbar-thumb{ background:rgba(255,255,255,.14); border-radius:99px }
+  ::-webkit-scrollbar-thumb:hover{ background:rgba(255,255,255,.25) }
+
+  select{ background:#14171f; border:1px solid rgba(255,255,255,.12); border-radius:10px; padding:9px 12px; font-size:13px; width:100%; color:#e8ecf4; outline:none; }
+  input:focus{ outline:none; }
+  .kbd{ font-size:10px; font-weight:700; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.14); border-radius:6px; padding:2px 6px; }
+</style>
+</head>
+<body class="antialiased">
+
+<!-- ======================= AMBIENT FX ======================= -->
+<div class="fixed inset-0 pointer-events-none z-0">
+  <div class="orb w-[520px] h-[520px] bg-[#5b8cff] -top-40 -left-40 opacity-25"></div>
+  <div class="orb w-[460px] h-[460px] bg-[#7c5cff] top-1/3 -right-52 opacity-20" style="animation-delay:-6s"></div>
+  <div class="orb w-[380px] h-[380px] bg-[#2dd4bf] bottom-[-180px] left-1/3 opacity-[.12]" style="animation-delay:-3s"></div>
+  <div class="absolute inset-0 gridlines"></div>
+</div>
+
+<!-- ======================= HOME ======================= -->
+<section id="screen-home" class="relative z-10 h-full overflow-y-auto">
+  <nav class="flex items-center justify-between px-5 sm:px-10 py-5 max-w-[1400px] mx-auto w-full">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#5b8cff] to-[#7c5cff] grid place-items-center shadow-lg shadow-[#5b8cff]/30">
+        <i data-lucide="graduation-cap" class="w-5 h-5 text-white"></i>
+      </div>
+      <div class="leading-tight">
+        <p class="font-extrabold text-[17px] tracking-tight">Lumina Meet</p>
+        <p class="text-[11px] text-white/40 font-medium tracking-wide">LEARN TOGETHER, ANYWHERE</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-5">
+      <p id="clockHome" class="hidden sm:block text-sm text-white/50 font-medium"></p>
+      <div class="w-9 h-9 rounded-full bg-gradient-to-br from-[#2dd4bf] to-[#5b8cff] grid place-items-center text-xs font-bold">L</div>
+    </div>
+  </nav>
+
+  <main class="max-w-[1400px] mx-auto w-full px-5 sm:px-10 grid lg:grid-cols-2 gap-14 items-center pt-6 lg:pt-10 pb-16">
+    <div class="space-y-8">
+      <div class="fade-up inline-flex items-center gap-2 glass rounded-full px-4 py-2 text-[11px] font-bold tracking-[0.18em] text-white/70" style="animation-delay:.05s">
+        <i data-lucide="sparkles" class="w-3.5 h-3.5 text-[#8ab4ff]"></i> LIVE LEARNING, REIMAGINED
+      </div>
+      <h1 class="fade-up text-[44px] sm:text-[64px] leading-[1.02] font-extrabold tracking-tight" style="animation-delay:.15s">
+        Real-time learning,<br>
+        <span class="serif grad-text pr-2">beautifully</span> <span class="grad-text">simple.</span>
+      </h1>
+      <p class="fade-up text-white/55 text-[15px] sm:text-lg leading-relaxed max-w-md font-medium" style="animation-delay:.25s">
+        Meet, share your screen, and study with your class in crystal-clear video — no installs, no downloads. Just a link.
+      </p>
+
+      <div class="fade-up flex flex-wrap items-center gap-3" style="animation-delay:.35s">
+        <button onclick="newMeeting()" class="btn-ctl flex items-center gap-2.5 bg-[#4f7cff] hover:bg-[#6090ff] text-white font-bold text-sm px-6 py-4 rounded-2xl shadow-xl shadow-[#4f7cff]/30">
+          <i data-lucide="video" class="w-4.5 h-4.5"></i> New meeting
+        </button>
+        <div class="glass rounded-2xl flex items-center pl-4 pr-1.5 py-1.5 gap-2 focus-within:border-[#5b8cff]/50 transition">
+          <i data-lucide="keyboard" class="w-4 h-4 text-white/40 shrink-0"></i>
+          <input id="joinCodeInput" oninput="syncJoinBtn()" onkeydown="if(event.key==='Enter')joinFromInput()" placeholder="Enter a code or link" class="bg-transparent text-sm font-semibold placeholder:text-white/30 w-40 sm:w-48 py-2.5">
+          <button id="joinBtn" onclick="joinFromInput()" disabled class="btn-ctl text-sm font-bold px-4 py-2.5 rounded-xl text-white/30 transition">Join</button>
+        </div>
+      </div>
+
+      <div class="fade-up flex items-center gap-2 text-white/35 text-xs font-semibold" style="animation-delay:.45s">
+        <div class="flex -space-x-2">
+          <div class="w-7 h-7 rounded-full hairline bg-gradient-to-br from-[#6d5cff] to-[#3bb9ff] grid place-items-center text-[9px] font-bold">MC</div>
+          <div class="w-7 h-7 rounded-full hairline bg-gradient-to-br from-[#ff7ab8] to-[#ffb86b] grid place-items-center text-[9px] font-bold">AY</div>
+          <div class="w-7 h-7 rounded-full hairline bg-gradient-to-br from-[#34d399] to-[#22d3ee] grid place-items-center text-[9px] font-bold">JW</div>
+        </div>
+        <span>4,800+ learners met here today</span>
+      </div>
+    </div>
+
+    <!-- HERO MOCK -->
+    <div class="fade-up relative hidden lg:block" style="animation-delay:.3s">
+      <div id="heroCard" class="relative glass-deep rounded-3xl p-3 shadow-2xl shadow-black/60 max-w-[560px] mx-auto will-change-transform" style="transform-style:preserve-3d">
+        <div class="flex items-center justify-between px-2 pb-3">
+          <div class="flex items-center gap-1.5">
+            <span class="w-2.5 h-2.5 rounded-full bg-[#ff5f57]"></span><span class="w-2.5 h-2.5 rounded-full bg-[#febc2e]"></span><span class="w-2.5 h-2.5 rounded-full bg-[#28c840]"></span>
+          </div>
+          <p class="text-[11px] text-white/40 font-bold tracking-wide">lumina.meet/qmz-rdkp-tvh</p>
+        </div>
+        <div class="grid grid-cols-2 gap-2.5">
+          <div class="tile speaking relative rounded-2xl overflow-hidden h-40 bg-gradient-to-br from-[#1a2138] to-[#101527] grid place-items-center">
+            <div class="w-14 h-14 rounded-full bg-gradient-to-br from-[#5b8cff] to-[#7c5cff] grid place-items-center font-extrabold text-lg">H</div>
+            <span class="absolute left-2.5 bottom-2.5 text-[10px] font-bold bg-black/55 rounded-full px-2.5 py-1 flex items-center gap-1"><i data-lucide="star" class="w-2.5 h-2.5 text-[#f9ab00]"></i>Host</span>
+            <div class="absolute right-2.5 bottom-3 flex items-end gap-[3px]"><span class="vbar"></span><span class="vbar"></span><span class="vbar"></span></div>
+            <div class="sheen"></div>
+          </div>
+          <div class="relative rounded-2xl overflow-hidden h-40 bg-gradient-to-br from-[#0d2b24] to-[#0a1a2e] grid place-items-center">
+            <div class="w-14 h-14 rounded-full bg-gradient-to-br from-[#34d399] to-[#22d3ee] grid place-items-center font-extrabold text-lg">L</div>
+            <span class="absolute left-2.5 bottom-2.5 text-[10px] font-bold bg-black/55 rounded-full px-2.5 py-1">Learner</span>
+            <span class="absolute right-2.5 top-2.5 w-6 h-6 grid place-items-center rounded-full bg-[#f9ab00] text-black"><i data-lucide="hand" class="w-3.5 h-3.5"></i></span>
+            <div class="sheen"></div>
+          </div>
+          <div class="relative rounded-2xl overflow-hidden h-40 bg-[#0c0f16] p-4 col-span-2">
+            <p class="text-[10px] font-bold text-white/35 mb-3 tracking-wide">YOUR SCREEN IS BEING SHARED</p>
+            <div class="space-y-2.5">
+              <div class="h-2 rounded-full bg-[#5b8cff]/70 w-2/3"></div>
+              <div class="h-2 rounded-full bg-white/15 w-full"></div>
+              <div class="h-2 rounded-full bg-[#2dd4bf]/60 w-1/2 ml-6"></div>
+              <div class="h-2 rounded-full bg-white/10 w-5/6 ml-6"></div>
+              <div class="h-2 rounded-full bg-[#7c5cff]/70 w-1/3"></div>
+            </div>
+          </div>
+        </div>
+        <div class="flex items-center justify-center gap-2 pt-3.5 pb-1.5">
+          <span class="w-9 h-9 rounded-full bg-white/10 grid place-items-center"><i data-lucide="mic" class="w-4 h-4"></i></span>
+          <span class="w-9 h-9 rounded-full bg-white/10 grid place-items-center"><i data-lucide="video" class="w-4 h-4"></i></span>
+          <span class="w-9 h-9 rounded-full bg-[#5b8cff]/20 grid place-items-center text-[#8ab4ff]"><i data-lucide="monitor-up" class="w-4 h-4"></i></span>
+          <span class="w-9 h-9 rounded-full bg-[#ea4335] grid place-items-center"><i data-lucide="phone-off" class="w-4 h-4"></i></span>
+        </div>
+      </div>
+
+      <div class="floaty absolute -left-6 top-6 glass-deep rounded-2xl px-4 py-3 flex items-center gap-3 shadow-xl" style="animation-delay:-2s">
+        <span class="w-8 h-8 rounded-full bg-[#f9ab00]/20 grid place-items-center text-[#f9ab00]"><i data-lucide="hand" class="w-4 h-4"></i></span>
+        <div><p class="text-xs font-bold">A learner raised a hand</p><p class="text-[10px] text-white/40">Waiting to ask a question</p></div>
+      </div>
+      <div class="floaty absolute -right-3 top-1/3 glass-deep rounded-2xl px-4 py-3 flex items-center gap-3 shadow-xl">
+        <span class="w-8 h-8 rounded-full bg-[#5b8cff]/20 grid place-items-center text-[#8ab4ff]"><i data-lucide="monitor-up" class="w-4 h-4"></i></span>
+        <div><p class="text-xs font-bold">Screen sharing</p><p class="text-[10px] text-white/40">1080p · zero installs</p></div>
+      </div>
+      <div class="floaty absolute left-8 -bottom-6 glass-deep rounded-2xl px-4 py-3 flex items-center gap-3 shadow-xl" style="animation-delay:-4s">
+        <span class="recdot w-2.5 h-2.5 rounded-full bg-[#ef4444]"></span>
+        <div><p class="text-xs font-bold">Recording · Live captions</p><p class="text-[10px] text-white/40">Never miss a lesson again</p></div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="max-w-[1400px] mx-auto w-full px-5 sm:px-10 pb-10">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div class="glass rounded-2xl px-5 py-4 flex items-center gap-3"><i data-lucide="monitor-up" class="w-5 h-5 text-[#8ab4ff]"></i><div><p class="text-sm font-bold">HD screen share</p><p class="text-[11px] text-white/40">Present slides instantly</p></div></div>
+      <div class="glass rounded-2xl px-5 py-4 flex items-center gap-3"><i data-lucide="captions" class="w-5 h-5 text-[#2dd4bf]"></i><div><p class="text-sm font-bold">Live captions</p><p class="text-[11px] text-white/40">Speech-to-text, built in</p></div></div>
+      <div class="glass rounded-2xl px-5 py-4 flex items-center gap-3"><i data-lucide="shield-check" class="w-5 h-5 text-[#2dd4bf]"></i><div><p class="text-sm font-bold">Secure by design</p><p class="text-[11px] text-white/40">Private meeting codes</p></div></div>
+      <div class="glass rounded-2xl px-5 py-4 flex items-center gap-3"><i data-lucide="users" class="w-5 h-5 text-[#b49bff]"></i><div><p class="text-sm font-bold">Made for classes</p><p class="text-[11px] text-white/40">Hand raise · chat · more</p></div></div>
+    </div>
+  </footer>
+</section>
+
+<!-- ======================= LOBBY ======================= -->
+<section id="screen-lobby" class="relative z-10 h-full overflow-y-auto hidden">
+  <nav class="flex items-center justify-between px-5 sm:px-10 py-5 max-w-[1300px] mx-auto w-full">
+    <div class="flex items-center gap-4">
+      <button onclick="leaveLobby()" class="btn-ctl w-10 h-10 grid place-items-center rounded-full glass tip" data-tip="Back"><i data-lucide="chevron-left" class="w-5 h-5"></i></button>
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-[#5b8cff] to-[#7c5cff] grid place-items-center"><i data-lucide="graduation-cap" class="w-4.5 h-4.5 text-white"></i></div>
+        <p class="font-extrabold tracking-tight">Lumina Meet</p>
+      </div>
+    </div>
+    <p class="text-xs text-white/40 font-bold">Code · <span id="lobbyCode" class="text-white/70">—</span></p>
+  </nav>
+
+  <main class="max-w-[1300px] mx-auto w-full px-5 sm:px-10 grid lg:grid-cols-[1.4fr_1fr] gap-10 items-center pt-4 lg:pt-10 pb-16">
+    <div class="fade-up relative rounded-3xl overflow-hidden bg-[#10131b] hairline aspect-video shadow-2xl shadow-black/50" style="animation-delay:.1s">
+      <video id="previewVideo" autoplay playsinline muted class="absolute inset-0 w-full h-full object-cover mirror"></video>
+      <div id="previewAvatar" class="absolute inset-0 hidden avatar-fx bg-gradient-to-br from-[#5b8cff] to-[#7c5cff] grid place-items-center">
+        <div class="w-24 h-24 rounded-full bg-black/25 grid place-items-center text-3xl font-extrabold" id="previewInitials">G</div>
+      </div>
+      <span id="previewName" class="absolute left-4 bottom-4 text-xs font-bold bg-black/55 backdrop-blur rounded-full px-3.5 py-1.5">Guest</span>
+      <div class="absolute inset-0 grid place-items-center pointer-events-none">
+        <div class="flex items-center gap-4 pointer-events-auto mt-[22%]">
+          <button id="lobbyMicBtn" onclick="lobbyToggleMic()" class="btn-ctl tip w-14 h-14 rounded-full grid place-items-center bg-black/45 backdrop-blur border border-white/15 hover:bg-black/60" data-tip="Mute microphone"><i data-lucide="mic" class="w-5.5 h-5.5"></i></button>
+          <button id="lobbyCamBtn" onclick="lobbyToggleCam()" class="btn-ctl tip w-14 h-14 rounded-full grid place-items-center bg-black/45 backdrop-blur border border-white/15 hover:bg-black/60" data-tip="Turn off camera"><i data-lucide="video" class="w-5.5 h-5.5"></i></button>
+        </div>
+      </div>
+      <div id="previewConnecting" class="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-black/55 backdrop-blur rounded-full px-4 py-2 text-[11px] font-bold text-white/70">
+        <span class="w-2 h-2 rounded-full bg-[#f9ab00] animate-pulse"></span> Starting your camera…
+      </div>
+    </div>
+
+    <div class="fade-up space-y-7" style="animation-delay:.25s">
+      <div>
+        <p class="text-[11px] font-bold tracking-[0.2em] text-[#8ab4ff] mb-2">READY TO JOIN?</p>
+        <h2 class="text-3xl sm:text-[38px] font-extrabold tracking-tight leading-tight">Online Learning Session</h2>
+        <div class="flex flex-wrap items-center gap-3 mt-4">
+          <span id="lobbyRole" class="inline-flex items-center gap-2 text-[11px] font-bold rounded-full px-3.5 py-2 bg-[#4f7cff]/15 text-[#8ab4ff]"></span>
+          <p id="lobbyRoleNote" class="text-xs text-white/40 font-medium"></p>
+        </div>
+      </div>
+      <div>
+        <label class="text-xs font-bold text-white/45 tracking-wide">WHAT'S YOUR NAME?</label>
+        <input id="nameInput" oninput="syncNamePreview()" onkeydown="if(event.key==='Enter')joinMeeting()" placeholder="e.g. Ada Lovelace" class="mt-2 w-full glass rounded-2xl px-5 py-4 text-sm font-semibold placeholder:text-white/25 focus:border-[#5b8cff]/60 transition" maxlength="30">
+      </div>
+      <div class="flex items-center gap-3">
+        <button onclick="joinMeeting()" class="btn-ctl flex-1 sm:flex-none flex items-center justify-center gap-2.5 bg-[#4f7cff] hover:bg-[#6090ff] font-bold text-sm px-8 py-4 rounded-2xl shadow-xl shadow-[#4f7cff]/30">
+          <i data-lucide="video" class="w-4 h-4"></i> Join now
+        </button>
+        <button onclick="joinMeeting(true)" class="btn-ctl flex items-center gap-2.5 glass hover:bg-white/10 font-bold text-sm px-6 py-4 rounded-2xl text-white/80">
+          <i data-lucide="monitor-up" class="w-4 h-4"></i> Present
+        </button>
+      </div>
+      <div class="glass rounded-2xl flex items-center gap-2.5 pl-4 pr-1.5 py-1.5">
+        <i data-lucide="link-2" class="w-4 h-4 text-[#8ab4ff] shrink-0"></i>
+        <p id="lobbyShareLink" class="flex-1 truncate text-xs font-bold text-white/60"></p>
+        <button onclick="copyShareLink(state.code)" class="tip btn-ctl w-9 h-9 grid place-items-center rounded-xl bg-white/8 hover:bg-white/14 shrink-0" data-tip="Copy invite link"><i data-lucide="copy" class="w-4 h-4"></i></button>
+        <button onclick="shareInvite()" class="tip btn-ctl w-9 h-9 grid place-items-center rounded-xl bg-white/8 hover:bg-white/14 shrink-0" data-tip="Share invite"><i data-lucide="send" class="w-4 h-4"></i></button>
+      </div>
+      <p class="text-[11px] text-white/35 font-medium flex items-center gap-2"><i data-lucide="shield-check" class="w-3.5 h-3.5 text-[#2dd4bf]"></i> Your audio and video are only shared with this class.</p>
+    </div>
+  </main>
+</section>
+
+<!-- ======================= MEETING ======================= -->
+<section id="screen-meeting" class="fixed inset-0 z-20 hidden flex-col bg-[#0a0c12]">
+  <!-- top header -->
+  <header class="h-12 shrink-0 flex items-center justify-between px-4">
+    <div class="flex items-center gap-3 min-w-0">
+      <p id="meetTitle" class="text-sm font-bold truncate">Online Learning Session</p>
+      <button onclick="copyInfo()" class="tip hidden sm:flex items-center gap-1.5 text-[11px] font-bold text-white/50 hover:text-white/80 glass rounded-full px-3 py-1.5 transition" data-tip="Copy joining info"><span id="meetCodeTxt">—</span><i data-lucide="copy" class="w-3 h-3"></i></button>
+    </div>
+    <div class="flex items-center gap-2">
+      <span class="hidden sm:flex items-center gap-1.5 text-[11px] font-bold text-white/50 glass rounded-full px-3 py-1.5"><i data-lucide="clock" class="w-3 h-3"></i><span id="meetClock">00:00</span></span>
+      <span class="flex items-center gap-1.5 text-[11px] font-bold text-white/70 glass rounded-full px-3 py-1.5"><i data-lucide="users" class="w-3 h-3"></i><span id="meetCount">1</span></span>
+    </div>
+  </header>
+
+  <!-- presenting banner -->
+  <div id="presentBanner" class="hidden absolute left-1/2 -translate-x-1/2 top-14 z-30">
+    <div class="glass-deep rounded-full pl-4 pr-2 py-2 flex items-center gap-3 shadow-xl">
+      <span class="flex items-center gap-2 text-xs font-bold text-[#8ab4ff]"><i data-lucide="monitor-up" class="w-4 h-4"></i> You're sharing your screen</span>
+      <button onclick="stopPresent()" class="btn-ctl text-xs font-bold bg-white text-black rounded-full px-4 py-1.5 hover:bg-white/85">Stop sharing</button>
+    </div>
+  </div>
+
+  <!-- rec badge -->
+  <div id="recBadge" class="hidden absolute left-4 top-14 z-30 glass-deep rounded-full px-3.5 py-1.5 items-center gap-2">
+    <span class="recdot w-2.5 h-2.5 rounded-full bg-[#ef4444]"></span>
+    <span class="text-[11px] font-bold tracking-widest">REC</span>
+    <span id="recTime" class="text-[11px] font-bold text-white/50 tabular-nums">00:00</span>
+  </div>
+
+  <!-- stage -->
+  <main class="relative flex-1 min-h-0 px-3 pb-2">
+    <div id="grid" class="grid gap-2.5 h-full w-full"></div>
+    <div id="spotWrap" class="hidden h-full w-full flex-col md:flex-row gap-2.5">
+      <div id="spotSlot" class="flex-1 min-w-0 min-h-0"></div>
+      <div id="rail" class="shrink-0 flex md:flex-col gap-2.5 md:w-[218px] overflow-auto md:h-full h-[118px]"></div>
+    </div>
+
+    <!-- hand toast -->
+    <div id="handToast" class="hidden absolute left-1/2 -translate-x-1/2 bottom-4 z-30 glass-deep rounded-full pl-4 pr-2 py-2 flex items-center gap-3">
+      <span class="flex items-center gap-2 text-xs font-bold text-[#f9ab00]"><i data-lucide="hand" class="w-4 h-4"></i> You raised your hand</span>
+      <button onclick="toggleHand()" class="btn-ctl text-xs font-bold bg-white/10 hover:bg-white/20 rounded-full px-4 py-1.5">Lower</button>
+    </div>
+  </main>
+
+  <!-- captions -->
+  <div id="captionBar" class="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-[104px] z-30 hidden w-[92%] max-w-2xl text-center">
+    <span id="captionText" class="inline-block bg-black/75 backdrop-blur rounded-xl px-5 py-2.5 text-sm font-semibold leading-relaxed text-white/95">Listening…</span>
+  </div>
+
+  <!-- right panel -->
+  <aside id="panel" class="hidden absolute right-3 top-14 bottom-[104px] z-40 w-[92vw] max-w-[360px] rounded-3xl overflow-hidden glass-deep shadow-2xl shadow-black/50 flex-col"></aside>
+
+  <!-- bottom bar -->
+  <footer class="h-[96px] shrink-0 relative flex items-center justify-center px-4">
+    <div class="hidden md:flex absolute left-5 items-center gap-2 text-xs font-semibold text-white/45">
+      <span id="bottomClock" class="tabular-nums">00:00</span><span class="text-white/20">·</span><span id="bottomCode">—</span>
+    </div>
+
+    <div class="flex items-center gap-2 sm:gap-3">
+      <button id="btnMic" onclick="toggleMic()" class="tip btn-ctl w-12 h-12 sm:w-14 sm:h-14 rounded-full grid place-items-center glass" data-tip="Turn off microphone"></button>
+      <button id="btnCam" onclick="toggleCam()" class="tip btn-ctl w-12 h-12 sm:w-14 sm:h-14 rounded-full grid place-items-center glass" data-tip="Turn off camera"></button>
+      <button id="btnCc" onclick="toggleCaptions()" class="tip btn-ctl w-12 h-12 sm:w-14 sm:h-14 rounded-full grid place-items-center glass" data-tip="Turn on captions">
+        <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2.5" y="5" width="19" height="14" rx="4"/><path d="M10.5 10.2c-.4-.5-1-.8-1.7-.8-1.3 0-2.3 1.1-2.3 2.6s1 2.6 2.3 2.6c.7 0 1.3-.3 1.7-.8M18 10.2c-.4-.5-1-.8-1.7-.8-1.3 0-2.3 1.1-2.3 2.6s1 2.6 2.3 2.6c.7 0 1.3-.3 1.7-.8" stroke-linecap="round"/></svg>
+      </button>
+      <button id="btnPresent" onclick="togglePresent()" class="tip btn-ctl w-12 h-12 sm:w-14 sm:h-14 rounded-full grid place-items-center glass" data-tip="Present now"></button>
+      <button id="btnHand" onclick="toggleHand()" class="tip btn-ctl w-12 h-12 sm:w-14 sm:h-14 rounded-full grid place-items-center glass" data-tip="Raise hand"></button>
+      <div class="relative">
+        <button id="btnMore" onclick="toggleMore(event)" class="tip btn-ctl w-12 h-12 sm:w-14 sm:h-14 rounded-full grid place-items-center glass" data-tip="More options">
+          <span class="flex flex-col gap-[3.5px]"><span class="w-1.5 h-1.5 rounded-full bg-current"></span><span class="w-1.5 h-1.5 rounded-full bg-current"></span><span class="w-1.5 h-1.5 rounded-full bg-current"></span></span>
+        </button>
+        <div id="moreMenu" class="hidden absolute bottom-[72px] right-0 w-64 glass-deep rounded-2xl p-2 shadow-2xl">
+          <button onclick="toggleRecord()" class="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl hover:bg-white/8 text-left">
+            <span class="w-2.5 h-2.5 rounded-full bg-[#ef4444] shrink-0"></span><span id="recLabel" class="text-sm font-semibold">Start recording</span>
+          </button>
+          <button onclick="openSettings()" class="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl hover:bg-white/8 text-left">
+            <i data-lucide="settings" class="w-4 h-4 text-white/60"></i><span class="text-sm font-semibold">Audio & video settings</span>
+          </button>
+          <button onclick="copyInfo()" class="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl hover:bg-white/8 text-left">
+            <i data-lucide="copy" class="w-4 h-4 text-white/60"></i><span class="text-sm font-semibold">Copy joining info</span>
+          </button>
+          <div class="my-1.5 h-px bg-white/8"></div>
+          <div class="px-3.5 py-2 space-y-2">
+            <p class="text-[10px] font-bold tracking-[0.15em] text-white/35">KEYBOARD SHORTCUTS</p>
+            <p class="flex items-center justify-between text-xs font-semibold text-white/60">Mute microphone <span class="kbd">Ctrl D</span></p>
+            <p class="flex items-center justify-between text-xs font-semibold text-white/60">Toggle camera <span class="kbd">Ctrl E</span></p>
+          </div>
+        </div>
+      </div>
+      <button onclick="leaveMeeting()" class="tip btn-ctl ml-1 h-12 sm:h-14 px-5 rounded-full grid place-items-center bg-[#ea4335] hover:bg-[#f25446] shadow-lg shadow-[#ea4335]/25" data-tip="Leave call"><i data-lucide="phone-off" class="w-5 h-5"></i></button>
+    </div>
+
+    <div class="absolute right-5 flex items-center gap-2">
+      <button id="btnPeople" onclick="openPanel('people')" class="tip btn-ctl w-11 h-11 rounded-full grid place-items-center text-white/60 hover:bg-white/8" data-tip="Show everyone"><i data-lucide="users" class="w-5 h-5"></i></button>
+      <button id="btnChat" onclick="openPanel('chat')" class="tip btn-ctl relative w-11 h-11 rounded-full grid place-items-center text-white/60 hover:bg-white/8" data-tip="Chat with everyone">
+        <i data-lucide="message-square" class="w-5 h-5"></i>
+        <span id="unreadBadge" class="hidden absolute top-1 right-1 min-w-4 h-4 px-1 rounded-full bg-[#4f7cff] text-[9px] font-extrabold leading-4 text-center">0</span>
+      </button>
+      <button id="btnInfo" onclick="openPanel('info')" class="tip btn-ctl hidden sm:grid w-11 h-11 rounded-full place-items-center text-white/60 hover:bg-white/8" data-tip="Meeting details"><i data-lucide="info" class="w-5 h-5"></i></button>
+    </div>
+  </footer>
+</section>
+
+<!-- ======================= SETTINGS MODAL ======================= -->
+<div id="settingsModal" class="hidden fixed inset-0 z-50 place-items-center bg-black/60 backdrop-blur-sm px-4">
+  <div class="glass-deep rounded-3xl w-full max-w-md p-7 panel-in">
+    <div class="flex items-center justify-between mb-6">
+      <h3 class="font-extrabold text-lg tracking-tight">Audio & video</h3>
+      <button onclick="closeSettings()" class="btn-ctl w-9 h-9 grid place-items-center rounded-full hover:bg-white/10"><i data-lucide="x" class="w-4.5 h-4.5"></i></button>
+    </div>
+    <label class="text-xs font-bold text-white/45 tracking-wide">MICROPHONE</label>
+    <select id="micSelect" class="mt-2 mb-5"></select>
+    <label class="text-xs font-bold text-white/45 tracking-wide">CAMERA</label>
+    <select id="camSelect" class="mt-2"></select>
+    <button onclick="applyDevices()" class="btn-ctl mt-7 w-full bg-[#4f7cff] hover:bg-[#6090ff] font-bold text-sm py-3.5 rounded-2xl">Apply changes</button>
+  </div>
+</div>
+
+<!-- ======================= SHARE MODAL ======================= -->
+<div id="shareModal" class="hidden fixed inset-0 z-50 place-items-center bg-black/60 backdrop-blur-sm px-4">
+  <div class="glass-deep rounded-3xl w-full max-w-md p-7 panel-in relative">
+    <button onclick="closeShareModal()" class="btn-ctl absolute right-5 top-5 w-9 h-9 grid place-items-center rounded-full hover:bg-white/10"><i data-lucide="x" class="w-4.5 h-4.5"></i></button>
+    <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#5b8cff] to-[#7c5cff] grid place-items-center shadow-lg shadow-[#5b8cff]/30 mb-5">
+      <i data-lucide="link-2" class="w-6 h-6 text-white"></i>
+    </div>
+    <h3 class="font-extrabold text-xl tracking-tight">Your meeting&rsquo;s ready</h3>
+    <p class="text-sm text-white/50 font-medium mt-1.5 mb-5 leading-relaxed">Share this link with your class — anyone who opens it lands straight in the join screen.</p>
+    <div class="glass rounded-2xl flex items-center gap-2.5 pl-4 pr-1.5 py-1.5">
+      <i data-lucide="link-2" class="w-4 h-4 text-[#8ab4ff] shrink-0"></i>
+      <p id="shareLinkText" class="flex-1 truncate text-xs font-bold text-white/70"></p>
+      <button onclick="copyShareLink()" class="tip btn-ctl w-9 h-9 grid place-items-center rounded-xl bg-white/8 hover:bg-white/14 shrink-0" data-tip="Copy link"><i data-lucide="copy" class="w-4 h-4"></i></button>
+    </div>
+    <div class="grid grid-cols-2 gap-2.5 mt-3">
+      <button onclick="shareInvite()" class="btn-ctl flex items-center justify-center gap-2 glass hover:bg-white/10 font-bold text-sm py-3.5 rounded-2xl text-white/85"><i data-lucide="send" class="w-4 h-4"></i> Share invite</button>
+      <button onclick="startFromModal()" class="btn-ctl flex items-center justify-center gap-2 bg-[#4f7cff] hover:bg-[#6090ff] font-bold text-sm py-3.5 rounded-2xl shadow-lg shadow-[#4f7cff]/30"><i data-lucide="video" class="w-4 h-4"></i> Start now</button>
+    </div>
+    <p class="text-[11px] text-white/35 font-medium flex items-center gap-2 mt-5"><i data-lucide="shield-check" class="w-3.5 h-3.5 text-[#2dd4bf]"></i> Only people with this link can join the class.</p>
+  </div>
+</div>
+
+<!-- toasts -->
+<div id="toasts" class="fixed top-5 left-1/2 -translate-x-1/2 z-[80] flex flex-col items-center gap-2.5 pointer-events-none w-[94%] max-w-md"></div>
+
+<!-- Trystero (serverless WebRTC peer matchmaking via public Nostr relays) — bundled locally so no external script host is needed at load time. Runtime peer discovery still needs an open network connection to public relays, so this only works when the page is hosted normally (not inside a sandboxed preview). -->
+<script>
+var Trystero=(()=>{var Pn=Object.defineProperty;var $r=Object.getOwnPropertyDescriptor;var qr=Object.getOwnPropertyNames;var Kr=Object.prototype.hasOwnProperty;var jr=(e,n)=>{for(var t in n)Pn(e,t,{get:n[t],enumerable:!0})},Wr=(e,n,t,r)=>{if(n&&typeof n=="object"||typeof n=="function")for(let a of qr(n))!Kr.call(e,a)&&a!==t&&Pn(e,a,{get:()=>n[a],enumerable:!(r=$r(n,a))||r.enumerable});return e};var Fr=e=>Wr(Pn({},"__esModule",{value:!0}),e);var Ls={};jr(Ls,{createEvent:()=>Er,defaultRelayUrls:()=>Cr,getRelaySockets:()=>Ds,joinRoom:()=>Cs,pauseRelayReconnection:()=>rn,resumeRelayReconnection:()=>on,selfId:()=>Z,subscribe:()=>Rs});var Tn=Object.freeze,Pe=0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2fn,Ke=0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141n,pt=0x79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798n,wt=0x483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8n,Jr=Tn({p:Pe,n:Ke,h:1n,a:0n,b:7n,Gx:pt,Gy:wt}),ue=32,ft=e=>e instanceof Uint8Array||ArrayBuffer.isView(e)&&e.constructor.name==="Uint8Array"&&e.BYTES_PER_ELEMENT===1,ie=(e,n,t="")=>{if(ft(e)&&(n===void 0||e.length===n))return e;let r=ft(e),a=n!==void 0?` of length ${n}`:"",s=r?`length=${e.length}`:`type=${typeof e}`,o=(t?`"${t}" `:"")+"expected Uint8Array"+a+", got "+s;throw r?new RangeError(o):new TypeError(o)},zr=e=>Uint8Array.from(e),Vr=(e,n,t)=>zr(ie(e,t,n)),Pt=(e,n)=>e.toString(16).padStart(n,"0"),kt=e=>{let n="";for(let t of ie(e))n+=Pt(t,2);return n},vt=e=>{let n="hex invalid";if(typeof e!="string")throw new TypeError(n);if(e.length%2||!/^[\da-f]*$/i.test(e))throw new RangeError(n);let t=new Uint8Array(e.length/2);for(let r=0,a=0;r<t.length;r++,a+=2){let s=e.charCodeAt(a),o=e.charCodeAt(a+1);t[r]=((s&15)+(s>>6)*9)*16+(o&15)+(o>>6)*9}return t},lt=()=>{let e=globalThis?.crypto?.subtle;if(e)return e;throw new Error("crypto.subtle must be defined, consider polyfill")},He=(...e)=>{let n=0;for(let a of e)n+=ie(a).length;let t=new Uint8Array(n),r=0;for(let a of e)t.set(a,r),r+=a.length;return t},An=(e=ue)=>{let n=globalThis?.crypto;if(typeof n?.getRandomValues!="function")throw new Error("crypto.getRandomValues must be defined, consider polyfill");return n.getRandomValues(new Uint8Array(e))},Gr=BigInt,je=(e,n,t,r="bad number: out of range")=>{if(typeof e!="bigint")throw new TypeError(r);if(n<=e&&e<t)return e;throw new RangeError(r)},M=(e,n=Pe)=>(e%=n)>=0n?e:n+e,Qe=e=>M(e,Ke),Zr=(e,n)=>{if(e===0n)throw new Error("invert: expected non-zero number");if(n<=1n)throw new Error("invert: expected modulus > 1, got "+n);let t=M(e,n),r=n,a=0n,s=1n;for(;t!==0n;){let i=r/t,c=r-t*i,m=a-s*i;r=t,t=c,a=s,s=m}if(r!==1n)throw new Error("invert: does not exist");return M(a,n)},St=e=>{let n=eo[e];if(typeof n!="function")throw new Error("hashes."+e+" not set");return n},ut=(e,n,t)=>ie(St(e)(n,t),ue,"digest"),dt=async(e,n,t)=>ie(await St(e)(n,t),ue,"digest");var kn=e=>{if(e instanceof ke)return e;throw new TypeError("Point expected")},vn="bad point: not on curve",bt=e=>M(M(e*e)*e+7n),mt=e=>je(e,0n,Pe),$e=e=>je(e,1n,Pe),Tt=e=>je(e,1n,Ke),en=e=>!(e&1n),Xr=e=>Uint8Array.of(en(e)?2:3),At=e=>{let n=bt($e(e)),t=1n;for(let r=n,a=(Pe+1n)/4n;a>0n;a>>=1n)a&1n&&(t=t*r%Pe),r=r*r%Pe;if(M(t*t)!==n)throw new Error("sqrt invalid");return new ke(e,en(t)?t:M(-t),1n)},ke=class e{static BASE;static ZERO;X;Y;Z;constructor(n,t,r){this.X=mt(n),this.Y=$e(t),this.Z=mt(r),Tn(this)}static CURVE(){return Jr}static fromAffine(n){let{x:t,y:r}=n;return t===0n&&r===0n?qe:new e(t,r,1n)}static fromBytes(n){ie(n);let t=n.length,r=n[0],a=Ye(n,1,33);try{if(t===33&&(r===2||r===3)){let s=At(a);return r===3?s.negate():s}if(t===65&&r===4)return new e(a,Ye(n,33,65),1n).assertValidity()}catch{throw new Error(vn)}throw new Error(vn)}static fromHex(n){return e.fromBytes(vt(n))}get x(){return this.toAffine().x}get y(){return this.toAffine().y}equals(n){let{X:t,Y:r,Z:a}=this,{X:s,Y:o,Z:i}=kn(n);return M(t*i)===M(s*a)&&M(r*i)===M(o*a)}is0(){return this.Z===0n}negate(){return new e(this.X,M(-this.Y),this.Z)}double(){return this.add(this)}add(n){let{X:t,Y:r,Z:a}=this,{X:s,Y:o,Z:i}=kn(n),c=0n,m=7n,u=0n,f=0n,d=0n,h=M(m*3n),p=M(t*s),A=M(r*o),T=M(a*i),B=M(t+r),w=M(s+o);B=M(B*w),w=M(p+A),B=M(B-w),w=M(t+a);let C=M(s+i);return w=M(w*C),C=M(p+T),w=M(w-C),C=M(r+a),u=M(o+i),C=M(C*u),u=M(A+T),C=M(C-u),d=M(c*w),u=M(h*T),d=M(u+d),u=M(A-d),d=M(A+d),f=M(u*d),A=M(p+p),A=M(A+p),T=M(c*T),w=M(h*w),A=M(A+T),T=M(p-T),T=M(c*T),w=M(w+T),p=M(A*w),f=M(f+p),p=M(C*w),u=M(B*u),u=M(u-p),p=M(B*A),d=M(C*d),d=M(d+p),new e(u,f,d)}subtract(n){return this.add(kn(n).negate())}multiply(n,t=!0){if(!t&&n===0n)return qe;if(Tt(n),n===1n)return this;if(this.equals(Re))return co(n).p;let r=qe,a=Re,s=this;for(let o=0;t?o<256:n>0n;o++)n&1n?r=r.add(s):t&&(a=a.add(s)),s=s.double(),n>>=1n;return r}multiplyUnsafe(n){return this.multiply(n,!1)}toAffine(){let{X:n,Y:t,Z:r}=this;if(r===0n)return{x:0n,y:0n};if(r===1n)return{x:n,y:t};let a=Zr(r,Pe);if(M(r*a)!==1n)throw new Error("inverse invalid");return{x:M(n*a),y:M(t*a)}}assertValidity(){let{x:n,y:t}=this.toAffine();if($e(n),$e(t),M(t*t)!==bt(n))throw new Error(vn);return this}toBytes(n=!0){let{x:t,y:r}=this.assertValidity().toAffine(),a=he(t);return n?He(Xr(r),a):He(Uint8Array.of(4),a,he(r))}toHex(n){return kt(this.toBytes(n))}},Re=new ke(pt,wt,1n),qe=new ke(0n,1n,0n);ke.BASE=Re;ke.ZERO=qe;var Yr=(e,n,t)=>Re.multiply(n,!1).add(e.multiply(t,!1)).assertValidity(),Ee=e=>Gr("0x"+(kt(e)||"0")),Ye=(e,n,t)=>Ee(e.subarray(n,t)),he=e=>vt(Pt(je(e,0n,2n**256n),ue*2)),Qr=e=>{let n=Ee(ie(e,ue,"secret key"));return je(n,1n,Ke,"invalid secret key: outside of range")};var gt="SHA-256",eo={hmacSha256Async:async(e,n)=>{let t=lt(),r=await t.importKey("raw",e,{name:"HMAC",hash:gt},!1,["sign"]);return new Uint8Array(await t.sign("HMAC",r,n))},hmacSha256:void 0,sha256Async:async e=>new Uint8Array(await lt().digest(gt,e)),sha256:void 0};var no=e=>{if(e=e===void 0?An(48):e,ie(e),e.length<48||e.length>1024)throw new RangeError("expected 48-1024b");let n=M(Ee(e),Ke-1n);return he(n+1n)},to=e=>n=>{let t=no(n);return{secretKey:t,publicKey:e(t)}};var Rt=e=>Uint8Array.from("BIP0340/"+e,n=>n.charCodeAt(0)),Sn=(e,...n)=>{let t=ut("sha256",Rt(e));return ut("sha256",He(t,t,...n))},bn=(e,...n)=>dt("sha256Async",Rt(e)).then(t=>dt("sha256Async",He(t,t,...n))),Rn=e=>{let n=Qr(e),t=Re.multiply(n),{x:r,y:a}=t.assertValidity().toAffine(),s=en(a)?n:Qe(-n),o=he(r);return{d:s,px:o}},En=e=>Qe(Ee(e)),Et=(...e)=>En(Sn("challenge",...e)),Mt=async(...e)=>En(await bn("challenge",...e)),Bt=e=>Rn(e).px,ro=to(Bt),Ot=(e,n,t)=>{let r=Vr(e,"message"),{px:a,d:s}=Rn(n);return{m:r,px:a,d:s,a:ie(t,ue)}},Ct=e=>{let n=En(e);if(n===0n)throw new Error("sign failed: k is zero");let{px:t,d:r}=Rn(he(n));return{rx:t,k:r}},Dt=(e,n,t,r)=>He(n,he(Qe(e+t*r))),Lt="invalid signature produced",oo=(e,n,t=An(ue))=>{let{m:r,px:a,d:s,a:o}=Ot(e,n,t),i=he(s^Ee(Sn("aux",o))),{rx:c,k:m}=Ct(Sn("nonce",i,a,r)),u=Dt(m,c,Et(c,a,r),s);if(!It(u,r,a))throw new Error(Lt);return u},so=async(e,n,t=An(ue))=>{let{m:r,px:a,d:s,a:o}=Ot(e,n,t),i=he(s^Ee(await bn("aux",o))),{rx:c,k:m}=Ct(await bn("nonce",i,a,r)),u=Dt(m,c,await Mt(c,a,r),s);if(!await xt(u,r,a))throw new Error(Lt);return u},ao=(e,n)=>e instanceof Promise?e.then(n):n(e),Ht=(e,n,t,r)=>{let a=ie(e,64,"signature"),s=ie(n,void 0,"message"),o=ie(t,ue,"publicKey"),i,c,m,u;try{let f=Ee(o);i=At(f),c=$e(Ye(a,0,ue)),m=Tt(Ye(a,ue,64)),u=He(he(c),o,s)}catch{return!1}return ao(r(u),f=>{try{let{x:d,y:h}=Yr(i,m,Qe(-f)).toAffine();return!(!en(h)||d!==c)}catch{return!1}})},It=(e,n,t)=>Ht(e,n,t,Et),xt=async(e,n,t)=>Ht(e,n,t,Mt),Mn=Tn({keygen:ro,getPublicKey:Bt,sign:oo,verify:It,signAsync:so,verifyAsync:xt}),io=()=>{let e=[],n=Re,t=n;for(let r=0;r<33;r++){t=n,e.push(t);for(let a=1;a<128;a++)t=t.add(n),e.push(t);n=t.double()}return e},ht,yt=(e,n)=>{let t=n.negate();return e?t:n},co=e=>{let n=ht||(ht=io()),t=qe,r=Re;for(let a=0;a<33;a++){let s=Number(e&255n);e>>=8n,s>128&&(s-=256,e+=1n);let o=a*128,i=o+Math.abs(s)-1,c=a%2!==0,m=s<0;s===0?r=r.add(yt(c,n[o])):t=t.add(yt(m,n[i]))}if(e!==0n)throw new Error("invalid wnaf");return{p:t,f:r}};var{floor:On,min:fo,sin:lo}=Math,V="Trystero",ve=(e,n)=>Array(e).fill(void 0).map(n),uo="0123456789AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz",ce=e=>ve(e,()=>uo[On(Math.random()*62)]??"").join(""),Z=ce(20),oe=Promise.all.bind(Promise),Dn=typeof window<"u",{entries:de,fromEntries:Ln,keys:Y,values:ye}=Object,z=()=>{},nn="candidate",x=e=>(e!==null&&clearTimeout(e),null),_=e=>new Error(`${V}: ${e}`),pe=(e,n)=>e instanceof Error&&e.message?e.message:typeof e=="string"&&e?e:G(e??n),fe=(e,n)=>e instanceof Error?e:_(pe(e,n)),mo=new TextEncoder,go=new TextDecoder,le=e=>mo.encode(e),me=e=>go.decode(e),we=e=>e.reduce((n,t)=>n+t.toString(16).padStart(2,"0"),""),Me=(...e)=>e.join("@"),ho=(e,n)=>{let t=[...e],r=()=>{let s=lo(n++)*1e4;return s-On(s)},a=t.length;for(;a;){let s=On(r()*a--),o=t[a];t[a]=t[s],t[s]=o}return t},Hn=(e,n,t,r=!1)=>e.relayConfig?.urls||(r?ho(n,tn(e.appId)):n).slice(0,e.relayConfig?.redundancy??t),G=JSON.stringify,ge=e=>{try{return JSON.parse(e)}catch{throw _(`failed to parse JSON: ${e}`)}},tn=(e,n=Number.MAX_SAFE_INTEGER)=>e.split("").reduce((t,r)=>t+r.charCodeAt(0),0)%n,_t=3333,Ut=6e4,Bn={},We=null,Cn=null,rn=()=>{We||(We=new Promise(e=>{Cn=e}).finally(()=>{Cn=null,We=null}))},on=()=>{Cn?.()},In=(e,n,t)=>{let r={},a=!1,s=!1,o,i=z;r.isClosed=!1,r.ready=new Promise(m=>i=m);let c=()=>{if(r.isClosed)return;o=void 0,s=!1;let m=new WebSocket(e);m.onclose=()=>{if(r.isClosed||s)return;if(s=!0,We){We.then(c);return}let u=Bn[e]??=_t;if(u>=Ut){r.isClosed=!0;return}o=setTimeout(c,Math.random()*u),Bn[e]=fo(u*2,Ut)},m.onmessage=u=>n(String(u.data)),r.socket=m,r.url=m.url,m.onopen=()=>{let u=a;a=!0,i(r),Bn[e]=_t,u&&t?.()},r.send=u=>{m.readyState===1&&m.send(u)}};return r.close=()=>{r.isClosed=!0,o!==void 0&&(clearTimeout(o),o=void 0),r.socket.close()},c(),r};var xn=e=>{let n={},t=new WeakMap,r=o=>{let i=t.get(o);if(!i)throw _("relay bookkeeping missing registration for relay client");return i},a=()=>{let o={},i=c=>o[c]??={};return{forKey:i,forRelay:c=>i(r(c))}},s=(o,i)=>(n[o]=i,t.set(i,o),i);return{register:(o,i)=>{let c=n[o];return c||s(o,i())},keyOf:r,scoped:a,getSockets:()=>Ln(de(n).flatMap(([o,i])=>{let c=e(i);return c?[[o,c]]:[]}))}},Nt=()=>{if(Dn){let e=new AbortController;return addEventListener("online",on,{signal:e.signal}),addEventListener("offline",rn,{signal:e.signal}),()=>e.abort()}return z};var _n="AES-GCM",yo={},po=e=>btoa(String.fromCharCode.apply(null,Array.from(new Uint8Array(e)))),wo=e=>{let n=atob(e);return new Uint8Array(n.length).map((t,r)=>n.charCodeAt(r)).buffer},Be=async(e,n)=>new Uint8Array(await crypto.subtle.digest(e,le(n))),Se=async e=>yo[e]??=Array.from(await Be("SHA-1",e)).map(n=>n.toString(36)).join(""),$t=async(e,n,t)=>crypto.subtle.importKey("raw",await crypto.subtle.digest({name:"SHA-256"},le(`${e}:${n}:${t}`)),{name:_n},!1,["encrypt","decrypt"]),qt=async(e,n)=>we(await Be("SHA-256",`${V}:${e}:${n}`)),Kt="$",jt=",",Wt=async(e,n)=>{let t=crypto.getRandomValues(new Uint8Array(16));return t.join(jt)+Kt+po(await crypto.subtle.encrypt({name:_n,iv:t},await e,le(n)))},Ft=async(e,n)=>{let[t,r]=n.split(Kt);return me(await crypto.subtle.decrypt({name:_n,iv:new Uint8Array(t?.split(jt).map(Number)??[])},await e,wo(r??"")))};var Fe=57333,Po=18e4,ko=20,Jt=class{makeOffer;pool=[];pooled=new Set;leased=new Map;recycling=new Set;cleanupTimer=null;active=!1;constructor(e){this.makeOffer=e}get isActive(){return this.active}warmup(){this.pool=[],this.pooled.clear(),ve(ko,this.makeOffer).forEach(e=>this.push(e)),this.active=!0,this.cleanupTimer=setInterval(()=>{this.pool=this.pool.filter(e=>e.isDead?(this.pooled.delete(e),!1):!0)},Fe)}push(e){e.isDead||this.pooled.has(e)||this.leased.has(e)||(this.pool.push(e),this.pooled.add(e))}shift(e){let n=[];for(;n.length<e&&this.pool.length>0;){let t=this.pool.shift();if(!t)break;this.pooled.delete(t),n.push(t)}return n}claimLeased(e){let n=this.leased.get(e);n&&(x(n),this.leased.delete(e))}recycle(e){if(!(e.isDead||this.recycling.has(e))){if(e.connection.remoteDescription){e.destroy();return}if(!this.active){e.destroy();return}this.recycling.add(e),e.setHandlers({connect:z,close:z,error:z}),e.getOffer(!0).then(n=>{if(!n||n.type!=="offer"||e.isDead||!this.active){e.destroy();return}this.push(e)}).catch(()=>e.destroy()).finally(()=>this.recycling.delete(e))}}reclaimLeased(e){let n=this.leased.get(e);n&&(x(n),this.leased.delete(e),this.recycle(e))}lease(e){this.claimLeased(e),this.leased.set(e,setTimeout(()=>{this.leased.delete(e),this.recycle(e)},Po))}checkout(e,n,t){let r=this.shift(e),a=Math.max(0,e-r.length);a>0&&r.push(...ve(a,this.makeOffer));let s=async(o,i=!1)=>{try{let c=await t(o);return n?(this.lease(o),{peer:o,offer:c,claim:()=>this.claimLeased(o),reclaim:()=>this.reclaimLeased(o)}):{peer:o,offer:c}}catch(c){if(this.claimLeased(o),this.pooled.delete(o),o.destroy(),!i)return s(this.makeOffer(),!0);throw c}};return oe(r.map(o=>s(o)))}getOffers(e,n){return this.checkout(e,!0,n)}destroy(){this.active=!1,this.cleanupTimer&&(clearInterval(this.cleanupTimer),this.cleanupTimer=null),this.pool.forEach(e=>e.destroy()),this.pool=[],this.pooled.clear(),this.leased.forEach((e,n)=>{x(e),n.destroy()}),this.leased.clear(),this.recycling.forEach(e=>e.destroy()),this.recycling.clear()}};var Un=_("incorrect password for overlapping room"),zt=(e,n,t)=>{let r=o=>Be("SHA-256",`${o}:${e}:${n}:${t}`).then(we),a=async(o,i,c)=>{if(!e)return;if(c){let u=ce(36);await o({__trystero_pw:"challenge",c:u});let{data:f}=await i();if(!f||typeof f!="object"||f.__trystero_pw!=="response"||typeof f.h!="string")throw Un;let d=await r(u);if(f.h!==d)throw Un;return}let{data:m}=await i();if(!m||typeof m!="object"||m.__trystero_pw!=="challenge"||typeof m.c!="string")throw Un;await o({__trystero_pw:"response",h:await r(m.c)})};return{run:a,compose:o=>e||o?async(i,c,m,u)=>{await a(c,m,u),await o?.(i,c,m,u)}:void 0}},vo=e=>{let n=pe(e,"unknown error");return n.startsWith("handshake ")?n:`handshake failed: ${n}`},Vt=({onPeerHandshake:e,onHandshakeError:n,handshakeTimeoutMs:t,sendHandshakeData:r,sendHandshakeReady:a,onActivate:s,onFailure:o})=>{let i={},c=(f,d)=>{let h=i[f];!h||d&&h.peer!==d||h.isActive||!h.didLocalHandshakePass||!h.didReceiveRemoteReady||(h.isActive=!0,h.handshakeTimer=x(h.handshakeTimer),s(f,h.peer))},m=(f,d,h)=>{let p=i[f];if(!p||p.peer!==d)return;let A=vo(h);n?.(f,A),o(f,d,_(A))},u=(f,d)=>{let h=i[f];!h||h.peer!==d||h.isActive||(h.didLocalHandshakePass=!0,a("",f).catch(p=>m(f,d,_(`failed sending handshake readiness: ${pe(p,"unknown send failure")}`))),c(f,d))};return{addPeer:(f,d)=>{i[f]={peer:d,isActive:!1,didLocalHandshakePass:!1,didReceiveRemoteReady:!1,handshakeTimer:null,pendingHandshakePayloads:[],handshakeWaiters:[]}},clearPeer:(f,d)=>{let h=i[f];h&&(h.handshakeTimer=x(h.handshakeTimer),h.pendingHandshakePayloads.length=0,h.handshakeWaiters.splice(0).forEach(p=>p.reject(d)),delete i[f])},canReceiveFromPeer:(f,d)=>{let h=i[f];return!!(h&&(h.isActive||d))},start:(f,d)=>{let h=i[f];if(!h||h.peer!==d)return;h.handshakeTimer=setTimeout(()=>m(f,d,_(`handshake timed out after ${t}ms`)),t);let p=async(B,w)=>{await r(B,f,w)},A=()=>new Promise((B,w)=>{let C=i[f];if(!C||C.peer!==d){w(_("peer disconnected during handshake"));return}let I=C.pendingHandshakePayloads.shift();if(I){B(I);return}C.handshakeWaiters.push({resolve:B,reject:v=>w(v)})}),T=Z<f;Promise.resolve(e?.(f,p,A,T)).then(()=>u(f,d)).catch(B=>m(f,d,fe(B,"handshake failed")))},receiveHandshakeData:(f,d,h)=>{let p=i[d];if(!p||p.isActive)return;let A=h===void 0?{data:f}:{data:f,metadata:h},T=p.handshakeWaiters.shift();if(T){T.resolve(A);return}p.pendingHandshakePayloads.push(A)},receiveHandshakeReady:f=>{let d=i[f];!d||d.isActive||(d.didReceiveRemoteReady=!0,c(f))}}};var So=15e3,bo=5e3,Gt="icegatheringstatechange",To="iceconnectionstatechange",Je="offer",Ao="answer",Ro=/out of range/i,Zt=e=>e.replace(/ (\S+\.local) (\d+) typ host/g," 127.0.0.1 $2 typ host"),Nn=(e,{trickleIce:n,rtcConfig:t,rtcPolyfill:r,turnConfig:a,_test_only_mdnsHostFallbackToLoopback:s})=>{let o=new(r??RTCPeerConnection)({iceServers:Eo.concat(a??[]),...t}),i={},c=[],m=[],u=n!==!1,f=[],d=[],h=!1,p=!1,A=null,T=null,B=!1,w=()=>T=x(T),C=()=>{B||(B=!0,w(),i.close?.())},I=g=>{i.signal?i.signal(g):c.push(g)},v=g=>{let k=i.signal;i.signal=H=>{k?.(H),g(H)},c.length>0&&c.splice(0).forEach(H=>i.signal?.(H))},R=g=>s?Zt(g):g,$=g=>{if(!s||typeof g.candidate!="string")return g;let k=Zt(g.candidate);return k===g.candidate?g:{...g,candidate:k}},b=g=>({type:g.localDescription?.type??Je,sdp:R(g.localDescription?.sdp??"")}),j=()=>{let g=o.remoteDescription?.sdp;return g?g.match(/a=ice-ufrag:([^\s]+)/)?.[1]??null:null},F=()=>(o.remoteDescription?.sdp?.match(/^m=/gm)??[]).length,q=g=>{if(!o.remoteDescription)return!1;let k=F();if(typeof g.sdpMLineIndex=="number"&&k>0&&g.sdpMLineIndex>=k)return!1;let H=j();return!(H&&g.usernameFragment&&g.usernameFragment!==H)},W=async g=>{try{return await o.addIceCandidate(g),!0}catch(k){if(k instanceof Error&&Ro.test(k.message)&&typeof g.sdpMLineIndex=="number")return!1;throw k}},Q=async()=>{if(!o.remoteDescription||f.length===0)return;let g=f.splice(0),k=[];for(let H of g){if(!q(H)){k.push(H);continue}await W(H)||k.push(H)}k.length>0&&f.push(...k)},l=async g=>{if(q(g)){await W(g)||f.push(g);return}f.push(g)},y=g=>{g.binaryType="arraybuffer",g.bufferedAmountLowThreshold=65535,g.onmessage=k=>{let H=k.data;i.data?i.data(H):m.push(H)},g.onopen=()=>i.connect?.(),g.onclose=C,g.onerror=({error:k})=>i.error?.(fe(k,"data channel error"))},S=async g=>{let k=null;try{await Promise.race([new Promise(H=>{let ee=()=>{g.iceGatheringState==="complete"&&(g.removeEventListener(Gt,ee),H())};g.addEventListener(Gt,ee),ee()}),new Promise(H=>{k=setTimeout(H,So)})])}finally{x(k)}return b(g)},P=async()=>{let g=u?b(o):await S(o);return I(g),g};e?(A=o.createDataChannel("data"),y(A)):o.ondatachannel=({channel:g})=>{A=g,y(g)};let E=async(g=!1)=>{if(o.connectionState!=="closed")try{return h=!0,g&&(o.signalingState!=="stable"&&o.signalingState!=="closed"&&o.localDescription?.type===Je&&await o.setLocalDescription({type:"rollback"}),typeof o.restartIce=="function"&&o.restartIce()),await o.setLocalDescription(g?await o.createOffer({iceRestart:!0}):void 0),await P()}catch(k){i.error?.(fe(k,"failed to create local offer"))}finally{h=!1}};o.onnegotiationneeded=async()=>E(!1),o.onicecandidate=({candidate:g})=>{if(!u||!g)return;let k=$(typeof g.toJSON=="function"?g.toJSON():{candidate:g.candidate,sdpMid:g.sdpMid,sdpMLineIndex:g.sdpMLineIndex,usernameFragment:g.usernameFragment});I({type:nn,sdp:JSON.stringify(k)})};let U=()=>{if(o.connectionState==="failed"||o.connectionState==="closed"||o.iceConnectionState==="failed"||o.iceConnectionState==="closed"){C();return}if(o.connectionState==="connected"||o.connectionState==="connecting"||o.iceConnectionState==="connected"||o.iceConnectionState==="completed"||o.iceConnectionState==="checking"){w();return}if(o.connectionState==="disconnected"||o.iceConnectionState==="disconnected"){T||(T=setTimeout(()=>{T=null,(o.connectionState==="disconnected"||o.iceConnectionState==="disconnected")&&C()},bo));return}};o.onconnectionstatechange=U,o.addEventListener(To,U),o.ontrack=g=>{let k=g.streams[0];if(k){if(!i.track&&!i.stream){d.push({track:g.track,stream:k});return}i.track?.(g.track,k),i.stream?.(k)}},o.onremovestream=g=>i.stream?.(g.stream);let K=e?new Promise(g=>v(k=>{k.type===Je&&g(k)})):Promise.resolve();return e&&queueMicrotask(()=>{!h&&o.signalingState==="stable"&&!o.localDescription&&o.connectionState!=="closed"&&o.onnegotiationneeded?.(new Event("negotiationneeded"))}),{created:Date.now(),connection:o,get channel(){return A},get isDead(){return o.connectionState==="closed"},getOffer:async(g=!1)=>{if(e)return g?E(!0):o.localDescription?.type===Je?u?b(o):S(o):K},async signal(g){if(g.type==="candidate"){try{let k=JSON.parse(g.sdp);k&&typeof k=="object"&&await l($(k))}catch(k){i.error?.(fe(k,"failed to parse remote candidate"))}return}if(!(A?.readyState==="open"&&!g.sdp?.includes("a=rtpmap")))try{let k={...g,sdp:R(g.sdp)};if(g.type===Je){if(h||o.signalingState!=="stable"&&!p){if(e)return;await oe([o.setLocalDescription({type:"rollback"}),o.setRemoteDescription(k)])}else await o.setRemoteDescription(k);return await Q(),await o.setLocalDescription(),await P()}if(g.type===Ao){p=!0;try{await o.setRemoteDescription(k),await Q()}finally{p=!1}}}catch(k){i.error?.(fe(k,"failed to apply remote signal"))}},sendData:g=>A?.send(g),destroy:()=>{w(),A?.close(),o.close(),h=!1,p=!1,C()},setHandlers:g=>{let{signal:k,...H}=g;Object.assign(i,H),i.data&&m.length>0&&m.splice(0).forEach(ee=>i.data?.(ee)),k&&v(k),(i.track||i.stream)&&d.length>0&&d.splice(0).forEach(({track:ee,stream:ne})=>{i.track?.(ee,ne),i.stream?.(ne)})},offerPromise:K,addStream:g=>g.getTracks().forEach(k=>o.addTrack(k,g)),removeStream:g=>o.getSenders().filter(k=>k.track&&g.getTracks().includes(k.track)).forEach(k=>o.removeTrack(k)),addTrack:(g,k)=>o.addTrack(g,k),removeTrack:g=>{let k=o.getSenders().find(H=>H.track===g);k&&o.removeTrack(k)},replaceTrack:(g,k)=>{let H=o.getSenders().find(ee=>ee.track===g);if(H)return H.replaceTrack(k)}}},Eo=[...ve(3,(e,n)=>`stun:stun${n||""}.l.google.com:19302`),"stun:stun.cloudflare.com:3478"].map(e=>({urls:e}));var Mo=Object.getPrototypeOf(Uint8Array),$n=32,Bo=0,qn=32,Xt=34,Kn=35,sn=36,Oe=16*2**10-sn,ze=255,Oo=65535,Yt="bufferedamountlow",Qt="close",er="error",Co=1e4,Do=e=>e instanceof ArrayBuffer?new Uint8Array(e):new Uint8Array(e.buffer,e.byteOffset,e.byteLength),Lo=(e,n=Co)=>e.readyState!=="open"||e.bufferedAmount<=e.bufferedAmountLowThreshold?Promise.resolve(e.readyState==="open"):new Promise(t=>{let r=!1,a=null,s=c=>{r||(r=!0,e.removeEventListener(Yt,o),e.removeEventListener(Qt,i),e.removeEventListener(er,i),x(a),t(c))},o=()=>s(!0),i=()=>s(!1);if(e.addEventListener(Yt,o),e.addEventListener(Qt,i),e.addEventListener(er,i),a=setTimeout(()=>s(!1),n),e.readyState!=="open"){s(!1);return}e.bufferedAmount<=e.bufferedAmountLowThreshold&&s(!0)}),nr=({getPeer:e,getPeerIds:n,canReceiveFromPeer:t,throwIfAborted:r})=>{let a={},s={},o={},i={},c=(f,d,{includePending:h=!1}={})=>(f?Array.isArray(f)?f:[f]:n(h)).flatMap(p=>{let A=e(p,h);return A?[Promise.resolve(d(p,A))]:(console.warn(`${V}: no peer with id ${p} found`),[])});return{makeInternalAction:(f,d={})=>{let h=s[f];if(a[f]&&h){let w=a[f].options;if(w.sendToPending!==!!d.sendToPending||w.receiveWhilePending!==!!d.receiveWhilePending)throw _(`action type "${f}" cannot be redefined`);return h}if(!f)throw _("action type argument is required");let p=le(f);if(p.byteLength>$n)throw _(`action type string "${f}" (${p.byteLength}b) exceeds byte limit (${$n}). Hint: choose a shorter name.`);let A={sendToPending:!!d.sendToPending,receiveWhilePending:!!d.receiveWhilePending},T=new Uint8Array($n);T.set(p);let B=0;return a[f]={onComplete:z,onProgress:z,setOnComplete:w=>{a[f].onComplete=w;let C=i[f];C?.length&&(delete i[f],C.forEach(({payload:I,peerId:v,metadata:R})=>w(I,v,R)))},setOnProgress:w=>{a[f].onProgress=w},send:async(w,C,I,v,R)=>{r(R);let $=typeof w;if($==="undefined")throw _("action data cannot be undefined");let b=$!=="string",j=w instanceof Blob,F=j||w instanceof ArrayBuffer||w instanceof Mo,q=I!==void 0,W=F?Do(j?await w.arrayBuffer():w):le(b?G(w):w),Q=q?le(G(I)):null,l=Math.ceil(W.byteLength/Oe)+(q?1:0)||1,y=ve(l,(S,P)=>{let E=P===l-1,U=!!(q&&P===0),K=new Uint8Array(sn+(U?Q?.byteLength??0:E?W.byteLength-Oe*(l-(q?2:1)):Oe));return K.set(T),K.set([B>>8,B&ze],qn),K.set([Number(E)|Number(U)<<1|Number(F)<<2|Number(b)<<3],Xt),K.set([Math.round((P+1)/l*ze)],Kn),K.set(q?U?Q??new Uint8Array:W.subarray((P-1)*Oe,P*Oe):W.subarray(P*Oe,(P+1)*Oe),sn),K});return B=B+1&Oo,await oe(c(C,async(S,P)=>{let{channel:E}=P,U=0;for(;U<l;){r(R);let K=y[U];if(!K)break;if(E&&E.bufferedAmount>E.bufferedAmountLowThreshold){let H=await Lo(E);if(r(R),!H)break}let g=e(S,A.sendToPending);if(!g||g!==P)break;P.sendData(K),U++;let k=K[Kn]??ze;v?.(k/ze,S,I)}},{includePending:A.sendToPending})),[]},options:A},s[f]={send:a[f].send,onMessage:a[f].setOnComplete,onProgress:a[f].setOnProgress}},handleData:(f,d)=>{let h=new Uint8Array(d),p=me(h.subarray(Bo,qn)).replaceAll("\0",""),A=a[p];if(!t(f,!!A?.options.receiveWhilePending))return;let T=(h[qn]??0)<<8|(h[33]??0),B=h[Xt]??0,w=h[Kn]??0,C=h.subarray(sn),I=!!(B&1),v=!!(B&2),R=!!(B&4),$=!!(B&8);o[f]??={},o[f][p]??={};let b=o[f][p][T]??={chunks:[]};if(v?b.meta=ge(me(C)):b.chunks.push(C),A?.onProgress(w/ze,f,b.meta),!I)return;let j=new Uint8Array(b.chunks.reduce((q,W)=>q+W.byteLength,0));b.chunks.reduce((q,W)=>(j.set(W,q),q+W.byteLength),0),delete o[f][p][T];let F=R?j:$?ge(me(j)):me(j);if(A){A.onComplete(F,f,b.meta);return}(i[p]??=[]).push({payload:F,peerId:f,...b.meta===void 0?{}:{metadata:b.meta}})},clearPeer:f=>{delete o[f]}}};var Ho=500,Ie=(e,n)=>{let t=_(n);return t.kind=e,t.name=e==="aborted"?"AbortError":t.name,t},jn=e=>{if(e?.aborted)throw Ie("aborted","operation aborted")},tr=e=>e&&typeof e=="object"&&!Array.isArray(e)&&typeof e.r=="string"?{r:e.r,...Object.hasOwn(e,"m")?{m:e.m}:{}}:null,Io=e=>e&&typeof e=="object"&&!Array.isArray(e)&&typeof e.r=="string"?{r:e.r,...typeof e.e=="string"?{e:e.e}:{}}:null,an=(e,n)=>n===void 0?e:{...e,metadata:n},rr=({getPeer:e,getPeerIds:n,canReceiveFromPeer:t})=>{let r={},a={},s=nr({getPeer:e,getPeerIds:n,canReceiveFromPeer:t,throwIfAborted:jn}),o=s.makeInternalAction,i=s.handleData,c=h=>{let p=a[h];p&&(x(p.timer),p.signal&&p.abortHandler&&p.signal.removeEventListener("abort",p.abortHandler),delete a[h])},m=(h,p)=>{de(a).forEach(([A,T])=>{T.peerId===h&&(c(A),T.reject(p))})},u=(h,p)=>{s.clearPeer(h),m(h,Ie("disconnected",pe(p,"peer disconnected")))},f=o("@_response");return f.onMessage((h,p,A)=>{let T=Io(A);if(!T)return;let B=a[T.r];if(!(!B||B.peerId!==p)){if(c(T.r),T.e!==void 0){B.reject(Ie("rejected",T.e));return}B.resolve(h)}}),{makeAction:(h,p)=>{if(p&&"onRequest"in p&&p.kind!=="request")throw _('request actions must use kind: "request"');let A=p?.kind??"message",T=o(h),B=r[h];if(B){if(B.kind!==A)throw _(`action type "${h}" cannot be redefined`);return B.action}let w={kind:A,action:null,pendingMessages:[],pendingRequests:[],onReceiveProgress:p?.onReceiveProgress??null},C=(l,y)=>l?(S,P)=>l(S,an({peerId:P},y)):void 0,I=l=>{w.onReceiveProgress=l},v=(l,y,S)=>{let P=w.kind==="request"?tr(S):null;w.onReceiveProgress?.(l,an({peerId:y},P?P.m:S))};if(T.onProgress(v),A==="message"){let l=p?.onMessage??null,y=()=>{if(!l)return;let P=l;w.pendingMessages.splice(0).forEach(({payload:E,peerId:U,metadata:K})=>{Promise.resolve().then(()=>P(E,an({peerId:U},K))).catch(g=>console.error(`${V} action handler error:`,g))})},S={send:async(P,E={})=>{await T.send(P,E.target,E.metadata,C(E.onProgress,E.metadata),E.signal)},get onMessage(){return l},set onMessage(P){l=P,y()},get onReceiveProgress(){return w.onReceiveProgress},set onReceiveProgress(P){I(P)}};return T.onMessage((P,E,U)=>{if(!l){w.pendingMessages.push(U===void 0?{payload:P,peerId:E}:{payload:P,peerId:E,metadata:U});return}let K=l;Promise.resolve().then(()=>K(P,an({peerId:E},U))).catch(g=>console.error(`${V} action handler error:`,g))}),w.action=S,r[h]=w,y(),S}let R=p?.onRequest??null,$=l=>{x(l.timer);let y=w.pendingRequests.indexOf(l);y>-1&&w.pendingRequests.splice(y,1)},b=(l,y,S)=>{f.send(null,l,{r:y,e:pe(S,"request failed")})},j=(l,y)=>{$(l),Promise.resolve().then(()=>y(l.payload,{peerId:l.peerId,...l.metadata===void 0?{}:{metadata:l.metadata},signal:l.controller.signal})).then(async S=>{if(S===void 0)throw _("request handler returned undefined");await f.send(S,l.peerId,{r:l.requestId})}).catch(S=>b(l.peerId,l.requestId,S)).finally(()=>l.controller.abort())},F=()=>{R&&w.pendingRequests.slice().forEach(l=>j(l,R))},q=(l,y,S,P)=>{if(R){let U={payload:l,peerId:y,...S===void 0?{}:{metadata:S},requestId:P,controller:new AbortController,timer:null};j(U,R);return}let E={payload:l,peerId:y,...S===void 0?{}:{metadata:S},requestId:P,controller:new AbortController,timer:setTimeout(()=>{$(E),E.controller.abort(),b(y,P,"request handler unavailable")},Ho)};w.pendingRequests.push(E)},W=async(l,y)=>{let{target:S,metadata:P,onProgress:E,signal:U,timeoutMs:K}=y;if(jn(U),!e(S,!1))throw Ie("disconnected",`no active peer with id ${S}`);let g=ce(20),k=new Promise((H,ee)=>{let ne={peerId:S,resolve:H,reject:ee,timer:null,...U===void 0?{}:{signal:U}},Ue=()=>{c(g),ee(Ie("aborted","operation aborted"))};U&&(ne.abortHandler=Ue,U.addEventListener("abort",Ue,{once:!0})),a[g]=ne}).catch(H=>{throw H});try{await T.send(l,S,P===void 0?{r:g}:{r:g,m:P},C(E,P),U);let H=a[g];return H&&K!==void 0&&(H.timer=setTimeout(()=>{c(g),H.reject(Ie("timeout","request timed out"))},K)),await k}catch(H){throw c(g),H}},Q={request:W,requestMany:async(l,y)=>(jn(y.signal),await oe(y.targets.map(async S=>{try{let P={peerId:S,status:"fulfilled",value:await W(l,{target:S,...y.metadata===void 0?{}:{metadata:y.metadata},...y.timeoutMs===void 0?{}:{timeoutMs:y.timeoutMs},...y.onProgress===void 0?{}:{onProgress:y.onProgress},...y.signal===void 0?{}:{signal:y.signal}})};return y.onResult?.(P),P}catch(P){let E=fe(P,"request failed");if(E.kind==="aborted"||!E.kind)throw E;let U=E.kind==="timeout"?{peerId:S,status:"timeout"}:E.kind==="disconnected"?{peerId:S,status:"disconnected"}:{peerId:S,status:"rejected",error:E};return y.onResult?.(U),U}}))),get onRequest(){return R},set onRequest(l){R=l,F()},get onReceiveProgress(){return w.onReceiveProgress},set onReceiveProgress(l){I(l)}};return T.onMessage((l,y,S)=>{let P=tr(S);P&&q(l,y,P.m,P.r)}),w.action=Q,r[h]=w,F(),Q},makeInternalAction:o,handleData:i,clearPeer:u}};var or=e=>e&&typeof e=="object"&&!Array.isArray(e)&&typeof e.k=="string"?{key:e.k,...typeof e.s=="string"?{streamId:e.s}:{},...typeof e.t=="string"?{trackId:e.t}:{},...Object.hasOwn(e,"m")?{metadata:e.m}:{}}:null,sr=e=>n=>{let t=e.get(n);return t||(t=ce(20),e.set(n,t)),t},Wn=()=>{let e=new WeakMap,n=new WeakMap,t=new Map,r=new Map,a=new Map,s=new Map;return{getStreamKey:sr(e),getTrackKey:sr(n),rememberRemoteStream:(o,i,c)=>{t.set(o,i),c&&r.set(c,i)},getRemoteStream:(o,i)=>t.get(o)??(i?r.get(i):void 0),rememberRemoteTrack:(o,i,c,m,u)=>{let f={track:i,stream:c};a.set(o,f),m&&s.set(m,f),u&&r.set(u,c)},getRemoteTrack:(o,i)=>a.get(o)??(i?s.get(i):void 0),clearRemote:()=>{t.clear(),r.clear(),a.clear(),s.clear()}}},ar=({iterate:e,isActive:n,getSharedMediaPeer:t})=>{let r={},a={},s=Wn(),o={onPeerStream:null,onPeerTrack:null},i=(u,f,d,h)=>{n(u)&&(t(u)?.__trysteroMedia?.rememberRemoteStream(f,d,typeof d.id=="string"?d.id:void 0),o.onPeerStream?.(d,u,h))},c=(u,f,d,h,p)=>{n(u)&&(t(u)?.__trysteroMedia?.rememberRemoteTrack(f,d,h,typeof d.id=="string"?d.id:void 0,typeof h.id=="string"?h.id:void 0),o.onPeerTrack?.(d,h,u,p))},m=(u,f,d,h,p,A={})=>{let T={k:f,...A,...d===void 0?{}:{m:d}};return e(u,async(B,w)=>{await h(T,B),p(w)})};return{addStream:(u,f,d)=>m(f.target,s.getStreamKey(u),f.metadata,d,h=>h.addStream(u),{s:u.id}),removeStream:(u,f)=>{e(f,(d,h)=>h.removeStream(u))},addTrack:(u,f,d,h)=>m(d.target,s.getTrackKey(u),d.metadata,h,p=>p.addTrack(u,f),{s:f.id,t:u.id}),removeTrack:(u,f)=>{e(f,(d,h)=>h.removeTrack(u))},replaceTrack:(u,f,d,h)=>m(d.target,s.getTrackKey(f),d.metadata,h,p=>p.replaceTrack(u,f),{t:u.id}),receiveStreamMeta:(u,f)=>{if(!n(f))return;let d=or(u);if(!d)return;let h=t(f)?.__trysteroMedia?.getRemoteStream(d.key,d.streamId);if(h){i(f,d.key,h,d.metadata);return}(r[f]??=[]).push(d)},receiveTrackMeta:(u,f)=>{if(!n(f))return;let d=or(u);if(!d)return;let h=t(f)?.__trysteroMedia?.getRemoteTrack(d.key,d.trackId);if(h){c(f,d.key,h.track,h.stream,d.metadata);return}(a[f]??=[]).push(d)},receiveRemoteStream:(u,f)=>{if(!n(u))return;let d=r[u]?.shift();d&&i(u,d.key,f,d.metadata)},receiveRemoteTrack:(u,f,d)=>{if(!n(u))return;let h=a[u]?.shift();h&&c(u,h.key,f,d,h.metadata)},clearPeer:u=>{delete r[u],delete a[u]},get onPeerStream(){return o.onPeerStream},set onPeerStream(u){o.onPeerStream=u},get onPeerTrack(){return o.onPeerTrack},set onPeerTrack(u){o.onPeerTrack=u}}};var ir="beforeunload",xo=1e4,be=e=>"@_"+e,Ve=new Set,cr=()=>Ve.forEach(e=>e()),_o=e=>(Ve.add(e),Ve.size===1&&addEventListener(ir,cr),()=>{Ve.delete(e),Ve.size||removeEventListener(ir,cr)}),fr=(e,n,t,{onPeerHandshake:r,onHandshakeError:a,handshakeTimeoutMs:s=xo,isPassive:o=!1}={})=>{let i={},c={},m={},u={onPeerJoin:null,onPeerLeave:null},f=z,d=null,h=(l,y,{includePending:S=!1}={})=>(l?Array.isArray(l)?l:[l]:Y(S?i:c)).flatMap(P=>{let E=S?i[P]:c[P];return E?[Promise.resolve(y(P,E))]:(console.warn(`${V}: no peer with id ${P} found`),[])}),p=ar({iterate:(l,y)=>h(l,(S,P)=>y(S,P)),isActive:l=>!!c[l],getSharedMediaPeer:l=>i[l]??null}),A=rr({getPeer:(l,y)=>(y?i:c)[l],getPeerIds:l=>Y(l?i:c),canReceiveFromPeer:(l,y)=>!!d?.canReceiveFromPeer(l,y)}),T=A.makeInternalAction,B=A.handleData,w=A.makeAction,C=(l,y=_("peer disconnected"))=>{let S=fe(y,"peer disconnected");d?.clearPeer(l,S),delete i[l],delete c[l],A.clearPeer(l,S),m[l]?.splice(0).forEach(P=>P.reject(S)),delete m[l],p.clearPeer(l)},I=(l,y,S)=>{let P=i[l];if(!P||y&&P!==y)return;let E=!!c[l];C(l,S),P.destroy(),E&&u.onPeerLeave?.(l),n(l)},v=async()=>{await q.send(""),await new Promise(l=>setTimeout(l,99)),de(i).forEach(([l,y])=>{y.destroy(),C(l,_("room left"))}),f(),t()},R=T(be("ping")),$=T(be("pong")),b=T(be("signal")),j=T(be("stream")),F=T(be("track")),q=T(be("leave"),{sendToPending:!0,receiveWhilePending:!0}),W=T(be("hsdata"),{sendToPending:!0,receiveWhilePending:!0}),Q=T(be("hsready"),{sendToPending:!0,receiveWhilePending:!0});return d=Vt({...r===void 0?{}:{onPeerHandshake:r},...a===void 0?{}:{onHandshakeError:a},handshakeTimeoutMs:s,sendHandshakeData:W.send,sendHandshakeReady:Q.send,onActivate:(l,y)=>{c[l]=y,u.onPeerJoin?.(l)},onFailure:(l,y,S)=>I(l,y,S)}),R.onMessage((l,y)=>$.send("",y)),$.onMessage((l,y)=>{let S=m[y];S?.shift()?.resolve(),S&&!S.length&&delete m[y]}),b.onMessage((l,y)=>{c[y]&&i[y]?.signal(l)}),j.onMessage((l,y)=>p.receiveStreamMeta(l,y)),F.onMessage((l,y)=>p.receiveTrackMeta(l,y)),q.onMessage((l,y)=>I(y,void 0,_("peer left room"))),W.onMessage((l,y,S)=>d?.receiveHandshakeData(l,y,S)),Q.onMessage((l,y)=>d?.receiveHandshakeReady(y)),e((l,y)=>{let S=i[y];if(S){if(S===l)return;S.destroy(),C(y,_("peer replaced"))}i[y]=l,d?.addPeer(y,l),l.setHandlers({data:P=>B(y,P),stream:P=>p.receiveRemoteStream(y,P),track:(P,E)=>p.receiveRemoteTrack(y,P,E),signal:P=>{c[y]&&b.send(P,y)},close:()=>I(y,l,_("peer disconnected")),error:P=>{console.error(`${V} peer error:`,P),I(y,l,P)}}),d?.start(y,l)}),Dn&&(f=_o(()=>v().catch(z))),{makeAction:w,leave:v,ping:async l=>{if(!c[l])throw _(`no active peer with id ${l}`);let y=Date.now();return await new Promise((S,P)=>{let E=m[l]??=[],U=()=>{let g=m[l];if(!g)return;let k=g.indexOf(K);k>-1&&g.splice(k,1),g.length||delete m[l]},K={resolve:()=>{U(),S()},reject:g=>{U(),P(g)}};E.push(K),R.send("",l).catch(g=>K.reject(fe(g,"peer disconnected")))}),Date.now()-y},isPassive:()=>o,getPeers:()=>Ln(de(c).map(([l,y])=>[l,y.connection])),addStream:(l,y={})=>p.addStream(l,y,j.send),removeStream:(l,y={})=>{p.removeStream(l,y.target)},addTrack:(l,y,S={})=>p.addTrack(l,y,S,F.send),removeTrack:(l,y={})=>{p.removeTrack(l,y.target)},replaceTrack:(l,y,S={})=>p.replaceTrack(l,y,S,F.send),get onPeerJoin(){return u.onPeerJoin},set onPeerJoin(l){u.onPeerJoin=l,l&&Y(c).forEach(y=>l(y))},get onPeerLeave(){return u.onPeerLeave},set onPeerLeave(l){u.onPeerLeave=l},get onPeerStream(){return p.onPeerStream},set onPeerStream(l){p.onPeerStream=l},get onPeerTrack(){return p.onPeerTrack},set onPeerTrack(l){p.onPeerTrack=l}}};var ur=1,dr=2,lr=(e,n)=>{let t=le(e),r=new Uint8Array(3+t.byteLength+n.byteLength);return r[0]=ur,r[1]=t.byteLength>>>8&255,r[2]=t.byteLength&255,r.set(t,3),r.set(n,3+t.byteLength),r},Uo=(e,n)=>{let t=le(e),r=new Uint8Array(4+t.byteLength);return r[0]=dr,r[1]=Number(n),r[2]=t.byteLength>>>8&255,r[3]=t.byteLength&255,r.set(t,4),r},No=e=>{let n=new Uint8Array(e);if(n.byteLength<3)return null;if(n[0]===ur){let a=(n[1]??0)<<8|(n[2]??0),s=3+a;return a<=0||n.byteLength<s?null:{type:"room",roomToken:me(n.subarray(3,s)),payload:n.subarray(s).slice().buffer}}if(n[0]!==dr||n.byteLength<4)return null;let t=(n[2]??0)<<8|(n[3]??0),r=4+t;return t<=0||n.byteLength<r?null:{type:"presence",roomToken:me(n.subarray(4,r)),isPresent:n[1]===1}},mr=e=>{let{connection:n,channel:t}=e;return e.isDead||n.connectionState==="closed"||n.connectionState==="failed"||n.iceConnectionState==="closed"||n.iceConnectionState==="failed"||t?.readyState==="closing"||t?.readyState==="closed"},gr=e=>{if(mr(e))return"stale";let{channel:n}=e;return!n||n.readyState!=="open"?"transient":"live"},hr=class{byApp={};roomPresenceHandlers={};getMap(e){return this.byApp[e]??={}}get(e,n){return this.byApp[e]?.[n]}isPeerStale(e){return mr(e)}getHealth(e){return this.isPeerStale(e)?"stale":"live"}setRoomPresenceHandler(e,n){return this.roomPresenceHandlers[e]=n,()=>{this.roomPresenceHandlers[e]===n&&delete this.roomPresenceHandlers[e]}}sendRoomPresence(e,n,t){e.isClosing||e.peer.isDead||e.peer.sendData(Uo(n,t))}clear(e,n,{destroyPeer:t}){let r=this.byApp[e],a=r?.[n];if(!a||a.isClosing)return;a.idleTimer=x(a.idleTimer),a.isClosing=!0,t&&!a.peer.isDead&&a.peer.destroy();let s=ye(a.bindings);a.bindings={},a.bindingsByToken={},a.controlRoomId=null,delete r[n],s.forEach(o=>{o.handlers.close?.(),o.pendingData.length=0,o.pendingSendData.length=0,o.pendingTracks.length=0}),a.media.clearRemote(),a.pendingDataByToken.clear(),a.remoteRoomTokens.clear(),Y(r).length===0&&delete this.byApp[e]}register(e,n,t,r){let a=this.getMap(e),s=a[n];if(s){if(s.idleTimer=x(s.idleTimer),s.peer===t)return s;this.clear(e,n,{destroyPeer:!0})}let o={appId:e,peerId:n,peer:t,bindings:{},bindingsByToken:{},pendingDataByToken:new Map,remoteRoomTokens:new Set,idleTimer:null,controlRoomId:null,streamOwners:new Map,trackOwners:new Map,media:Wn(),idleMs:r,isClosing:!1};return t.setHandlers({data:i=>this.dispatchData(o,i),signal:i=>this.dispatchSignal(o,i),close:()=>this.clear(e,n,{destroyPeer:!1}),error:i=>{console.error(`${V} peer error:`,i),this.clear(e,n,{destroyPeer:!1})},track:(i,c)=>this.dispatchTrack(o,i,c)}),a[n]=o,o}bind(e,n,t,{onDetach:r}){let a=t.bindings[e];if(a)return t.idleTimer=x(t.idleTimer),{proxy:a.proxy,isNew:!1};let s={roomId:e,roomToken:null,roomTokenPromise:n,handlers:{},pendingData:[],pendingSendData:[],pendingTracks:[],detach:z,proxy:{}},o=()=>{t.bindings[e]&&(this.pruneRoomOwnership(t,e),delete t.bindings[e],s.roomToken&&t.bindingsByToken[s.roomToken]===s&&delete t.bindingsByToken[s.roomToken],t.controlRoomId===e&&(t.controlRoomId=Y(t.bindings)[0]??null),r(),this.scheduleIdleTimer(t))},i={created:t.peer.created,get connection(){return t.peer.connection},get channel(){return t.peer.channel},get isDead(){return t.peer.isDead},getOffer:c=>t.peer.getOffer(c),signal:c=>t.peer.signal(c),sendData:c=>{if(!s.roomToken){s.pendingSendData.push(c);return}t.peer.sendData(lr(s.roomToken,c))},destroy:()=>o(),setHandlers:c=>{let{signal:m,...u}=c;Object.assign(s.handlers,u),m&&(s.handlers.signal=m),this.flushBindingQueues(s)},offerPromise:t.peer.offerPromise,addStream:c=>{let m=t.streamOwners.get(c)??new Set,u=m.size===0;m.add(e),t.streamOwners.set(c,m),u&&t.peer.addStream(c)},removeStream:c=>{let m=t.streamOwners.get(c);m&&(m.delete(e),m.size===0&&(t.streamOwners.delete(c),t.peer.removeStream(c)))},addTrack:(c,m)=>{let u=t.trackOwners.get(c)??{stream:m,rooms:new Set},f=u.rooms.size===0;return u.stream=m,u.rooms.add(e),t.trackOwners.set(c,u),f?t.peer.addTrack(c,m):t.peer.connection.getSenders().find(d=>d.track===c)??t.peer.addTrack(c,m)},removeTrack:c=>{let m=t.trackOwners.get(c);m&&(m.rooms.delete(e),m.rooms.size===0&&(t.trackOwners.delete(c),t.peer.removeTrack(c)))},replaceTrack:(c,m)=>{let u=t.trackOwners.get(c);if(u){t.trackOwners.delete(c);let f=t.trackOwners.get(m)??{stream:u.stream,rooms:new Set};u.rooms.forEach(d=>f.rooms.add(d)),t.trackOwners.set(m,f)}return t.peer.replaceTrack(c,m)},__trysteroMedia:t.media};return s.proxy=i,s.detach=o,t.bindings[e]=s,t.controlRoomId??=e,t.idleTimer=x(t.idleTimer),n.then(c=>{if(t.isClosing||t.bindings[e]!==s)return;s.roomToken=c,t.bindingsByToken[c]=s;let m=t.pendingDataByToken.get(c);m?.length&&(s.pendingData.push(...m),t.pendingDataByToken.delete(c)),s.pendingSendData.splice(0).forEach(u=>t.peer.sendData(lr(c,u))),this.flushBindingQueues(s)}),{proxy:i,isNew:!0}}pruneRoomOwnership(e,n){e.streamOwners.forEach((t,r)=>{t.delete(n),t.size===0&&(e.streamOwners.delete(r),e.peer.removeStream(r))}),e.trackOwners.forEach((t,r)=>{t.rooms.delete(n),t.rooms.size===0&&(e.trackOwners.delete(r),e.peer.removeTrack(r))})}scheduleIdleTimer(e){e.isClosing||Y(e.bindings).length>0||(e.idleTimer=x(e.idleTimer),e.idleTimer=setTimeout(()=>{let n=this.byApp[e.appId]?.[e.peerId];!n||Y(n.bindings).length>0||this.clear(e.appId,e.peerId,{destroyPeer:!0})},e.idleMs))}getSignalBinding(e){if(e.controlRoomId){let t=e.bindings[e.controlRoomId];if(t?.handlers.signal)return t}let n=ye(e.bindings).find(t=>!!t.handlers.signal);return n?(e.controlRoomId=n.roomId,n):null}flushBindingQueues(e){let{handlers:n}=e;n.data&&e.pendingData.length>0&&e.pendingData.splice(0).forEach(t=>n.data?.(t)),(n.track||n.stream)&&e.pendingTracks.length&&e.pendingTracks.splice(0).forEach(({track:t,stream:r})=>{n.track?.(t,r),n.stream?.(r)})}dispatchData(e,n){let t=No(n);if(!t)return;if(t.type==="presence"){t.isPresent?e.remoteRoomTokens.add(t.roomToken):e.remoteRoomTokens.delete(t.roomToken),this.roomPresenceHandlers[e.appId]?.(e.peerId,t.roomToken,t.isPresent);return}let r=e.bindingsByToken[t.roomToken];if(!r){let a=e.pendingDataByToken.get(t.roomToken)??[];a.push(t.payload),e.pendingDataByToken.set(t.roomToken,a);return}r.handlers.data?r.handlers.data(t.payload):r.pendingData.push(t.payload)}dispatchSignal(e,n){this.getSignalBinding(e)?.handlers.signal?.(n)}dispatchTrack(e,n,t){ye(e.bindings).forEach(r=>{if(r.handlers.track||r.handlers.stream){r.handlers.track?.(n,t),r.handlers.stream?.(t);return}r.pendingTracks.push({track:n,stream:t})})}};var $o=23333,qo=12,Ko=7533,jo=23333,Fn="__legacy__",fn="offer-placeholder",Wo=["offer","answer","candidate"],Fo=e=>{if(typeof e=="string")try{let n=ge(e);return n&&typeof n=="object"?n:null}catch{return null}return e&&typeof e=="object"?e:null},Ge=(e,n)=>typeof e[n]=="string"&&e[n]?e[n]:void 0,Jo=e=>Wo.some(n=>n in e&&(typeof e[n]!="string"||e[n]==="")),pr=(e,n,t,r,a,s)=>{e.toCipher(n).then(o=>{e.isLeaving()||!s()||r(t,G(a(o.sdp)))})},zo=()=>({status:"idle",offerPeer:null,offerId:null,offerSdp:null,offerInitPromise:null,offerAnswered:!1,offerRelays:[],offerSignalRelays:[],offerSignalBacklog:[],offerRelayTimers:[],offerExpiryTimer:null,connectedPeer:null,connectedPeerUnhealthySinceMs:null,answeringExpiryTimer:null,answeringPeer:null,answerSent:!1,connectionErrorReported:!1,pendingCandidates:{}}),Vo=e=>[...e.turnConfig??[],...e.rtcConfig?.iceServers??[]].some(({urls:n})=>(Array.isArray(n)?n:[n]).some(t=>/^turns?:/i.test(t))),Go=(e,n)=>`could not connect to peer ${e} after exchanging SDP; ${Vo(n)?"check that your TURN server URLs and credentials are reachable by both peers":"configure TURN servers with turnConfig or rtcConfig.iceServers"}`,un=(e,n,t)=>{e.isLeaving()||n.connectedPeer||n.connectionErrorReported||(n.connectionErrorReported=!0,e.onJoinError?.({error:Go(t,e.config),appId:e.appId,peerId:t,roomId:e.roomId}))},xe=(e,n)=>e[n]??=zo(),ae=e=>{e.connectedPeer?e.status="connected":e.answeringPeer?e.status="answering":e.offerPeer||e.offerRelays.some(Boolean)?e.status="offering":e.status="idle"},cn=(e,n)=>{e.answeringPeer===n&&(e.answeringExpiryTimer=x(e.answeringExpiryTimer),e.answeringPeer=null,e.answerSent=!1,ae(e))},ln=(e,n,t)=>{e.connectedPeer&&(e.connectedPeer.isDead||e.connectedPeer.destroy(),e.connectedPeer=null,e.connectedPeerUnhealthySinceMs=null,ae(e))},Jn=(e,n)=>{e.offerRelayTimers[n]=x(e.offerRelayTimers[n]),e.offerRelays[n]&&(e.offerRelays[n]=void 0,ae(e))},yr=(e,n)=>{e?.offerRelays[n]===fn&&Jn(e,n)},Zo=e=>{if(e.isDead||e.connection.connectionState==="closed")return!0;try{return!!e.connection.remoteDescription}catch{return!0}},_e=(e,n)=>{let t=e.offerAnswered;e.offerExpiryTimer=x(e.offerExpiryTimer),e.offerInitPromise=null,e.offerRelays.forEach((r,a)=>Jn(e,a)),e.offerRelays=[],e.offerSignalRelays=[],e.offerRelayTimers=[],e.offerSignalBacklog=[],e.offerPeer&&e.offerPeer!==e.connectedPeer&&(t||Zo(e.offerPeer)?e.offerPeer.isDead||e.offerPeer.destroy():n.recycle(e.offerPeer)),e.offerPeer=null,e.offerId=null,e.offerSdp=null,e.offerAnswered=!1,e.connectionErrorReported=!1,ae(e)},Xo=(e,n,t,r)=>{x(n.answeringExpiryTimer),n.answeringExpiryTimer=setTimeout(()=>{let a=e.peerStates[t];!a||a.connectedPeer||a.answeringPeer!==r||(a.answerSent&&un(e,a,t),r.destroy(),cn(a,r),e.checkDeactivate())},jo)},Yo=async(e,n,t)=>{let r=t?[t,Fn]:[Fn];for(let a of r){let s=e.pendingCandidates[a];if(s?.length){delete e.pendingCandidates[a];for(let o of s)await n.signal(o)}}},wr=(e,n,t,r=Fe)=>{x(n.offerExpiryTimer);let a=n.offerId;n.offerExpiryTimer=setTimeout(()=>{let s=e.peerStates[t];!s||s.connectedPeer||s.offerId!==a||(s.offerAnswered&&un(e,s,t),_e(s,e.offerPool),e.checkDeactivate())},r)},Qo=(e,n,t,r)=>n.offerPeer&&n.offerId&&n.offerSdp?Promise.resolve({peer:n.offerPeer,offer:n.offerSdp,offerId:n.offerId}):(n.offerInitPromise||(n.offerInitPromise=(async()=>{let a=(await e.offerPool.checkout(1,!1,e.encryptOffer))[0];if(!a)throw _("failed to allocate offer peer");let{peer:s,offer:o}=a;n.offerPeer=s,n.offerId=ce(qo),n.offerSdp=o,n.offerAnswered=!1,n.connectionErrorReported=!1,n.offerSignalBacklog=[],ae(n);let i=()=>{n.offerPeer===s&&!n.connectedPeer&&(n.offerAnswered&&un(e,n,t),_e(n,e.offerPool)),e.disconnectPeer(s,t),e.checkDeactivate()};return s.setHandlers({connect:()=>e.connectPeer(s,t,r),signal:c=>{n.offerPeer===s&&(n.offerSignalBacklog.push(c),n.offerSignalRelays.forEach(m=>m?.(c)))},close:i,error:i}),wr(e,n,t),{peer:s,offer:o,offerId:n.offerId}})().finally(()=>n.offerInitPromise=null)),n.offerInitPromise),es=async(e,n,t,r,a)=>{if(r){e.attachSharedPeerToRoom(t,r);return}let s=e.peerStates[t];if(!s||s.connectedPeer||s.answeringPeer||s.offerAnswered){yr(s,n);return}if(s.offerRelays[n]!==fn)return;let[o,i]=await oe([Se(Me(e.rootTopicPlaintext,t)),Qo(e,s,t,n)]);if(e.isLeaving())return;if(s.connectedPeer||s.answeringPeer||s.offerAnswered||s.offerRelays[n]!==fn){yr(s,n);return}s.offerRelayTimers[n]=x(s.offerRelayTimers[n]),s.offerRelays[n]=!0,ae(s),s.offerRelayTimers[n]=setTimeout(()=>os(e,t,n),(e.announceIntervals[n]??e.announceIntervalMs)*.9);let c=!1;s.offerSignalRelays[n]=m=>{c&&(e.isLeaving()||s.connectedPeer||s.offerPeer!==i.peer||s.offerId!==i.offerId||m.type!=="candidate"||pr(e,m,o,a,u=>({peerId:Z,offerId:i.offerId,candidate:u,...e.isPassive?{passive:!0}:{}}),()=>!s.connectedPeer&&s.offerPeer===i.peer&&s.offerId===i.offerId))},a(o,G({peerId:Z,offerId:i.offerId,offer:i.offer,...e.isPassive?{passive:!0}:{}})),c=!0,s.offerSignalBacklog.forEach(m=>s.offerSignalRelays[n]?.(m))},ns=async(e,n,t,r,a,s,o)=>{let i=xe(e.peerStates,t);if(i.answeringPeer||i.offerAnswered)return;let c=!!(i.offerPeer||i.offerRelays.some(Boolean));if((c||s)&&Z<t)return;c&&_e(i,e.offerPool);let m=e.initPeer(!1,e.config);i.answeringPeer=m,i.answerSent=!1,i.connectionErrorReported=!1,Xo(e,i,t,m),ae(i);let u=()=>{i.answeringPeer===m&&!i.connectedPeer&&i.answerSent&&un(e,i,t),cn(i,m),e.disconnectPeer(m,t),e.checkDeactivate()};m.setHandlers({connect:()=>e.connectPeer(m,t,n),close:u,error:u});let f;try{f=await e.toPlain({type:"offer",sdp:r})}catch{cn(i,m),e.onJoinError?.({error:"incorrect room password when decrypting offer",appId:e.appId,peerId:t,roomId:e.roomId});return}if(m.isDead){cn(i,m);return}let d=await Se(Me(e.rootTopicPlaintext,t));e.isLeaving()||(m.setHandlers({signal:h=>{e.isLeaving()||i.answeringPeer!==m||m.isDead||h.type!=="answer"&&h.type!=="candidate"||pr(e,h,d,o,p=>{let A={peerId:Z};return h.type==="answer"?(i.answerSent=!0,A.answer=p):A.candidate=p,a&&(A.offerId=a),e.isPassive&&(A.passive=!0),A},()=>i.answeringPeer===m&&!m.isDead)}}),await m.signal(f),await Yo(i,m,a))},ts=async(e,n,t,r,a)=>{let s;try{s=await e.toPlain({type:nn,sdp:t})}catch{return}let o=xe(e.peerStates,n),i=r&&o?.offerPeer&&o.offerId===r?o.offerPeer:null,c=o?.answeringPeer??null,m=!r&&o?.offerPeer?o.offerPeer:null,u=a&&!a.isDead?a:i??c??m;if(!u||u.isDead){let f=r??Fn;(o.pendingCandidates[f]??=[]).push(s);return}u.signal(s)},rs=async(e,n,t,r,a,s)=>{let o;try{o=await e.toPlain({type:"answer",sdp:r})}catch{e.onJoinError?.({error:"incorrect room password when decrypting answer",appId:e.appId,peerId:t,roomId:e.roomId});return}if(s)e.offerPool.claimLeased(s),s.setHandlers({connect:()=>e.connectPeer(s,t,n),close:()=>e.disconnectPeer(s,t)}),s.signal(o);else{let i=e.peerStates[t];if(!i||!i.offerPeer||i.offerAnswered||a&&i.offerId&&a!==i.offerId||i.offerPeer.isDead)return;i.offerAnswered=!0,wr(e,i,t,$o),i.offerPeer.signal(o)}},os=(e,n,t)=>{let r=e.peerStates[n];!r||r.connectedPeer||r.offerRelays[t]&&(Jn(r,t),e.checkDeactivate())},Pr=e=>n=>async(t,r,a)=>{if(e.isLeaving())return;let s=Fo(r);if(!s||Jo(s))return;let o=Ge(s,"peerId")??"",i=Ge(s,"offer"),c=Ge(s,"answer"),m=Ge(s,"candidate"),u=Ge(s,"offerId"),f=s.peer,d=s.hasOutgoingOffer===!0,h=s.passive===!0;if(!o||o===Z)return;let[p,A]=await oe([e.rootTopicP,e.selfTopicP]);if(e.isLeaving()||t!==p&&t!==A||e.isPassive&&h||(e.isPassive&&!e.isActive&&!c&&!m&&(e.isActive=!0,e.requeueAnnounce?.()),e.isPassive&&!e.isActive))return;let T=e.peerStates[o],B=T?.connectedPeer;if(B&&T){let I=gr(B);if(I==="live"){T.connectedPeerUnhealthySinceMs=null;return}if(I==="stale")ln(T,o,"message-from-stale-peer");else{let v=Date.now(),R=T.connectedPeerUnhealthySinceMs??v;if(T.connectedPeerUnhealthySinceMs=R,v-R<Ko)return;ln(T,o,"message-from-prolonged-disconnect")}}let w=e.sharedPeers.get(e.appId,o);w&&e.sharedPeers.getHealth(w.peer)==="stale"&&(e.sharedPeers.clear(e.appId,o,{destroyPeer:!0}),w=void 0);let C=!!(o&&!i&&!c&&!m);if(C&&!w){let I=xe(e.peerStates,o),v=Z<o;if(I.answeringPeer||I.connectedPeer||I.offerAnswered)return;if(!v&&!I.offerPeer){let R=await Se(Me(e.rootTopicPlaintext,o));!e.isLeaving()&&!I.connectedPeer&&a(R,G({peerId:Z}));return}if(I.offerRelays[n])return;I.offerRelays[n]=fn,ae(I)}if(w&&(i||c||m)){if(w.bindings[e.roomId])return;e.attachSharedPeerToRoom(o,w);return}if(C)return es(e,n,o,w,a);if(i)return ns(e,n,o,i,u,d,a);if(m)return ts(e,o,m,u,f);if(c)return rs(e,n,o,c,u,f)};var dn=5333,ss=[233,533,1333],as=7533,is=123333,zn=({init:e,subscribe:n,announce:t,deactivate:r})=>{let a={},s={},o={},i={},c=new hr,m=()=>ye(a).some(v=>Y(v).length>0),u=v=>s[v]??={},f=v=>o[v]??={},d=(v,R,$)=>{c.getHealth(v.peer)==="live"&&c.sendRoomPresence(v,R,$)},h=(v,R)=>{de(s[v]??{}).forEach(([$,b])=>{if(!b.shouldAdvertise())return;let{roomToken:j,roomTokenPromise:F}=b;if(j){d(R,j,!0);return}F.then(q=>{s[v]?.[$]===b&&b.roomToken===q&&(c.get(v,R.peerId)!==R||R.isClosing||b.shouldAdvertise()&&d(R,q,!0))})})},p=(v,R,$)=>ye(c.getMap(v)).forEach(b=>d(b,R,$)),A=v=>{i[v]||(i[v]=c.setRoomPresenceHandler(v,(R,$,b)=>{if(!b)return;let j=c.get(v,R),F=o[v]?.[$];!j||!F||s[v]?.[F]?.attachSharedPeerToRoom(R,j)}))},T=v=>{a[v]&&Y(a[v]).length>0||(i[v]?.(),delete i[v],delete s[v],delete o[v])},B=!1,w=[],C=null,I=z;return(v,R,$)=>{if(!v)throw _("requires a config map as the first argument");if($&&typeof $!="object")throw _("third argument must be a callbacks object");let{appId:b}=v,j=$?.onJoinError,F=$?.onPeerHandshake,q=$?.handshakeTimeoutMs;if(!b)throw _("config map is missing appId field");if(!R)throw _("roomId argument required");if(q!==void 0&&(!Number.isFinite(q)||q<=0))throw _("handshakeTimeoutMs must be a positive number");if(a[b]?.[R])return a[b][R];A(b);let W=Me(V,b,R),Q=Se(W),l=Se(Me(W,Z)),y=$t(v.password??"",b,R),S=qt(b,R),P=v._test_only_sharedPeerIdleMs??is,E=!1,U=O=>async D=>({type:D.type,sdp:await O(y,D.sdp)}),K=U(Ft),g=U(Wt),k=c.getMap(b),H=()=>Nn(!0,v),ee=!1;C||=new Jt(H);let ne=C,Ue=async O=>{let D=await O.getOffer(Date.now()-O.created>Fe);if(!D||D.type!=="offer")throw _("failed to get offer for peer");return(await g(D)).sdp},Ne=(O,D)=>{let L=xe(J.peerStates,O);L.answeringExpiryTimer=x(L.answeringExpiryTimer),L.answeringPeer=null;let{proxy:X,isNew:N}=c.bind(R,S,D,{onDetach:()=>{let te=J.peerStates[O];te?.connectedPeer===D.peer&&(te.connectedPeer=null,te.connectedPeerUnhealthySinceMs=null,ae(te))}});L.connectedPeer=D.peer,L.connectedPeerUnhealthySinceMs=null,ae(L),N&&wn(X,O),_e(L,ne)},Dr=(O,D,L)=>{if(E){O.destroy();return}let X=xe(J.peerStates,D);if(X.connectedPeer){let re=k[D];if(re&&X.connectedPeer===re.peer&&re.bindings[R])return;X.connectedPeer!==O&&!O.isDead&&O.destroy();return}let N=k[D];if(N&&c.getHealth(N.peer)==="stale"&&(c.clear(b,D,{destroyPeer:!0}),N=void 0),N&&N.peer!==O){O.isDead||O.destroy(),Ne(D,N);return}let te=!N;N||=c.register(b,D,O,P),Ne(D,N),te&&h(b,N)},Lr=(O,D)=>{if(E)return;let L=J.peerStates[D];L?.connectedPeer===O&&(ln(L,D,"close-event"),Xe(),!se&&ee&&J.requeueAnnounce?.())},se=!!v.passive,Te=null,Ae,tt=z,Xe=()=>{if(!se||!J.isActive)return;let O=!1;de(J.peerStates).forEach(([D,L])=>{L.connectedPeer||L.answeringPeer||L.offerInitPromise||L.offerPeer||L.offerRelays.some(Boolean)?O=!0:L.status==="idle"&&delete J.peerStates[D]}),O||(J.isActive=!1,Ae=x(Ae),Le.forEach(x),Le.length=0,tt(),Te?.roomToken&&p(b,Te.roomToken,!1))},J={appId:b,roomId:R,config:v,peerStates:{},rootTopicPlaintext:W,rootTopicP:Q,selfTopicP:l,toPlain:K,toCipher:g,isLeaving:()=>E,isPassive:se,isActive:!se,onJoinError:j,sharedPeers:c,offerPool:ne,encryptOffer:Ue,initPeer:Nn,connectPeer:Dr,disconnectPeer:Lr,attachSharedPeerToRoom:Ne,checkDeactivate:Xe,announceIntervals:[],announceIntervalMs:dn},gn={config:v,appId:b,roomId:R,isPassive:se},Hr=Pr(J);if(!B){let O=e(v);w=(Array.isArray(O)?O:[O]).map(D=>Promise.resolve(D)),B=!0,I=v.relayConfig?.manualReconnection?z:Nt()}!se&&!ne.isActive&&ne.warmup(),J.announceIntervals=w.map(()=>dn);let hn=w.map(()=>dn),yn=w.map(()=>0),pn=w.map(()=>0),Le=[],rt=w.map(async(O,D)=>n(await O,await Q,await l,Hr(D),L=>ne.getOffers(L,Ue),gn));oe([Q,l]).then(([O,D])=>{if(E)return;let L=async(X,N)=>{if(E||se&&!J.isActive)return;let te=se?{passive:!0}:void 0,re;try{re=await t(X,O,D,te,gn),pn[N]=0}catch(Nr){let ct=pn[N]??0;ct===0&&v.relayConfig?.warnOnRelayFailure!==!1&&console.warn(`${V}: announce failed - ${pe(Nr,"")}`),pn[N]=ct+1}if(E||se&&!J.isActive||re&&typeof re!="number"&&"stopAnnouncing"in re)return;typeof re=="number"?(J.announceIntervals[N]=re,hn[N]=re):re&&(hn[N]=re.nextAnnounceMs,ee||=re.reannounceOnDisconnect===!0);let st=yn[N]??0;yn[N]=st+1;let at=hn[N]??dn,it=ss[st];Le[N]=setTimeout(()=>{L(X,N)},typeof it=="number"?Math.min(at,it):at)};tt=()=>{r&&w.forEach(async X=>{let N=await X;E||r(N,O,D,gn)})},J.requeueAnnounce=()=>{Le.forEach(x),Le.length=0,Ae=x(Ae),ne.isActive||ne.warmup(),Te?.roomToken&&p(b,Te.roomToken,!0),Ae=setTimeout(Xe,as),w.forEach(async(X,N)=>{let te=await X;te&&!E&&(yn[N]=0,L(te,N))})},rt.forEach(async(X,N)=>{if(await X,E)return;let te=await w[N];te&&!E&&(!se||J.isActive)&&L(te,N)})});let wn=z,{compose:Ir}=zt(v.password??"",b,R),ot=Ir(F),xr={...ot?{onPeerHandshake:ot}:{},...q===void 0?{}:{handshakeTimeoutMs:q},isPassive:se,onHandshakeError:(O,D)=>j?.({error:D.replace(/^handshake failed: /,""),appId:b,peerId:O,roomId:R})};a[b]??={};let _r=u(b),Ur=fr(O=>wn=O,O=>{if(E)return;let D=J.peerStates[O];D?.connectedPeer&&(D.connectedPeer=null,ae(D),Xe())},()=>{E=!0,wn=z;let O=s[b]?.[R];O?.roomToken&&(p(b,O.roomToken,!1),delete o[b]?.[O.roomToken],o[b]&&!Y(o[b]).length&&delete o[b]),s[b]&&(delete s[b][R],Y(s[b]).length||delete s[b]),de(J.peerStates).forEach(([D,L])=>{if(L.answeringExpiryTimer=x(L.answeringExpiryTimer),L.connectedPeer&&!L.connectedPeer.isDead){let X=k[D];(!X||X.peer!==L.connectedPeer)&&L.connectedPeer.destroy()}L.answeringPeer&&!L.answeringPeer.isDead&&L.answeringPeer.destroy(),_e(L,ne),L.connectedPeer=null,L.answeringPeer=null,ae(L)}),a[b]&&(delete a[b][R],Y(a[b]).length===0&&delete a[b]),Le.forEach(x),Ae=x(Ae),rt.forEach(async D=>{(await D)()}),!m()&&(B=!1,ne.destroy(),C=null,I(),T(b))},xr);return Te={roomToken:null,roomTokenPromise:S,attachSharedPeerToRoom:Ne,shouldAdvertise:()=>!se||J.isActive},_r[R]=Te,S.then(O=>{let D=Te;!D||E||s[b]?.[R]!==D||(D.roomToken=O,f(b)[O]=R,ye(k).forEach(L=>{L.remoteRoomTokens.has(O)&&Ne(L.peerId,L)}),(!se||J.isActive)&&p(b,O,!0))}),a[b][R]=Ur}};var cs=["offer","answer","candidate"],fs=6e4,ls=e=>{if(typeof e=="string")try{let n=ge(e);return n&&typeof n=="object"?n:null}catch{return null}return e},Vn=(e,n)=>typeof e[n]=="string"&&e[n]?e[n]:void 0,us=e=>cs.some(n=>n in e&&(typeof e[n]!="string"||e[n]==="")),ds=e=>{let n=ls(e);if(!n||us(n))return!1;let t=Vn(n,"peerId");return!!(t&&t!==Z&&n.passive!==!0&&!Vn(n,"answer")&&!Vn(n,"candidate"))},Gn=e=>{if(!e)throw _("topic strategy missing room context");return e},kr=(e,n,t,r)=>({kind:n,appId:e.appId,roomId:e.roomId,rootTopic:t,selfTopic:r}),Zn=(e,n,t,r)=>({kind:n,appId:e.appId,roomId:e.roomId,rootTopic:t,selfTopic:r}),Xn=({steadyAnnounceIntervalMs:e=fs,reannounceOnDisconnect:n=!0,init:t,subscribeTopic:r,publishTopic:a,unpublishTopic:s})=>zn({init:t,subscribe:async(o,i,c,m,u,f)=>{let d=Gn(f),h=(v,R)=>{a(o,v,R,Zn(d,"signal",i,c))},p=null,A=!1,T=null,B=!1,w=v=>{A||(A=!0,v())},C=()=>(T||(T=Promise.resolve(r(o,c,(v,R)=>{B||m(v,R,h)},kr(d,"self",i,c))).then(v=>{p=v,B&&w(v)})),T);d.isPassive||await C();let I=await r(o,i,async(v,R)=>{B||(d.isPassive&&ds(R)&&await C(),B||await m(v,R,h))},kr(d,"root",i,c));return()=>{B=!0,p&&w(p),I()}},announce:async(o,i,c,m,u)=>{let f=Gn(u),d=await a(o,i,G({peerId:Z,...m}),Zn(f,"announce",i,c));return typeof d=="number"||d!==void 0&&"stopAnnouncing"in d?d:{nextAnnounceMs:d?.nextAnnounceMs??e,reannounceOnDisconnect:d?.reannounceOnDisconnect??n}},...s?{deactivate:(o,i,c,m)=>{let u=Gn(m);return s(o,i,Zn(u,"announce",i,c))}}:{}});var br=xn(e=>e.socket),ms=5,Tr="x",Ar="EVENT",{secretKey:gs,publicKey:hs}=Mn.keygen(),ys=we(hs),Rr={},ps={},ws={},vr=250,mn=6e4,Ps=15*6e4,ks=5333,Ze=new WeakMap,Qn=new WeakSet,Ce=new WeakMap,Sr=e=>{let n=Ze.get(e),t=Math.min(n?.delayMs?Math.max(mn,n.delayMs*2):mn,Ps);return Ze.set(e,{delayMs:t,untilMs:Date.now()+t}),t},vs=e=>{let n=Ze.get(e);if(!n)return 0;let t=n.untilMs-Date.now();return t>0?t:0},Yn=e=>({nextAnnounceMs:e}),Ss={stopAnnouncing:!0},bs=e=>{if(Qn.has(e))return!1;let n=Ce.get(e);return n&&(clearTimeout(n.timer),Ce.delete(e)),Qn.add(e),Ze.delete(e),e.close?.(),!0},Ts=(e,n)=>{let t=Ce.get(e);t&&(clearTimeout(t.timer),t.eventIds.add(n));let r=t?.eventIds??new Set([n]),a=setTimeout(()=>{Ce.delete(e)},ks);Ce.set(e,{eventIds:r,timer:a})},As=(e,n)=>{let t=Ce.get(e);return t?.eventIds.has(n)?(clearTimeout(t.timer),Ce.delete(e),!0):!1},et=()=>Math.floor(Date.now()/1e3),nt=e=>ws[e]??=tn(e,1e4)+2e4,Er=async(e,n)=>{let t={kind:nt(e),tags:[[Tr,e]],created_at:et(),content:n,pubkey:ys},r=await Be("SHA-256",G([0,t.pubkey,t.created_at,t.kind,t.tags,t.content]));return G([Ar,{...t,id:we(r),sig:we(await Mn.signAsync(r,gs))}])},Rs=(e,n)=>(Rr[e]=n,G(["REQ",e,{kinds:[nt(n)],since:et(),"#x":[n]}])),De={},Mr=e=>{e.flushWaiters.forEach(n=>n()),e.flushWaiters.clear()},Es=(e,n,t)=>{let r=De[e.url]??={subIds:[],topics:new Map,updateTimer:null,flushWaiters:new Set};r.topics.set(n,t),Br(e,r)},Ms=(e,n)=>{let t=De[e.url];t&&(t.topics.delete(n),t.topics.size===0?(t.updateTimer!==null&&(clearTimeout(t.updateTimer),t.updateTimer=null),Mr(t),t.subIds.forEach(r=>e.send(G(["CLOSE",r]))),delete De[e.url]):Br(e,t))},Br=(e,n)=>{n.updateTimer===null&&(n.updateTimer=setTimeout(()=>{n.updateTimer=null;try{Or(e)}finally{Mr(n)}},0))},Bs=e=>{let n=De[e.url];return!n||n.updateTimer===null?Promise.resolve():new Promise(t=>n.flushWaiters.add(t))},Or=e=>{let n=De[e.url];if(!n||n.topics.size===0)return;let t=[...n.topics.keys()],r=[],a=et();for(let s=0;s<t.length;s+=vr)r.push(t.slice(s,s+vr));for(;n.subIds.length>r.length;){let s=n.subIds.pop();s&&e.send(G(["CLOSE",s]))}r.forEach((s,o)=>{let i=n.subIds[o]??=ce(64);e.send(G(["REQ",i,{kinds:[...new Set(s.map(nt))],since:a,"#x":s}]))})},Os=e=>{let n=De[e.url];n&&n.topics.size>0&&Or(e)},Cs=Xn({init:e=>Hn(e,Cr,ms,!0).map(n=>{let t=br.register(n,()=>In(n,r=>{let[a,s,o,i]=ge(r);if(a!==Ar){let c=`${V}: relay failure from ${t.url} - `,m=a==="CLOSED"&&typeof o=="string"?o:i,u=a==="OK"&&o===!1,f=u&&m?.startsWith("rate-limited:"),d=u&&m?.startsWith("duplicate:"),h=a==="CLOSED"||u&&!f&&!d,p=a==="OK"&&As(t,s);if(h&&!bs(t))return;f?Sr(t):p&&Ze.delete(t),!d&&e.relayConfig?.warnOnRelayFailure!==!1&&(a==="NOTICE"?console.warn(c+s):(u||a==="CLOSED")&&console.warn(c+m));return}if(o&&typeof o=="object"&&"content"in o){let{content:c}=o,m=ps[s];if(m){m(Rr[s]??"",c);return}let u=De[t.url];if(u?.subIds.includes(s)&&o.tags){let f=o.tags.find(d=>d[0]===Tr);f?.[1]&&u.topics.get(f[1])?.(f[1],c)}}},()=>Os(t)));return t.ready}),subscribeTopic:(e,n,t,r)=>{Es(e,n,(o,i)=>{t(o,i)});let s=()=>{Ms(e,n)};return r.kind==="root"?Bs(e).then(()=>s):s},publishTopic:async(e,n,t,r)=>{if(Qn.has(e)||e.isClosed)return r.kind==="announce"?Ss:void 0;if(r.kind==="announce"){let i=vs(e);if(i>0)return Yn(Math.max(mn,i))}let a=await Er(n,typeof t=="string"?t:G(t)),s=e.socket.readyState===1;if(e.send(a),r.kind!=="announce")return;if(!s)return Yn(Sr(e));let o=ge(a)[1].id;return Ts(e,o),Yn(mn)}}),Ds=br.getSockets,Cr=["basspistol.org","bucket.coracle.social","chorus.pjv.me","koru.bitcointxoko.org","nos.lol","nostr-01.uid.ovh","nostr-01.yakihonne.com","nostr-relay.corb.net","nostr.data.haus","nostr.islandarea.net","nostr.sathoarder.com","nostr.tegila.com.br","nostr.vulpem.com","purplerelay.com","relay-can.zombi.cloudrodion.com","relay-rpi.edufeed.org","relay.agorist.space","relay.artio.inf.unibe.ch","relay.mostr.pub","relay.mostro.network","relay.sigit.io","relay02.lnfi.network","schnorr.me","social.amanah.eblessing.co","staging.yabu.me","strfry.shock.network","top.testrelay.top","yabu.me/v2"].map(e=>"wss://"+e);return Fr(Ls);})();
+/*! Bundled license information:
+
+@noble/secp256k1/index.js:
+  (*! noble-secp256k1 - MIT License (c) 2019 Paul Miller (paulmillr.com) *)
+*/
+
+</script>
+<script>
+/* ============================================================
+   STATE
+============================================================ */
+const state = {
+  code:'', displayName:'Guest', inMeeting:false, wantPresent:false, isHost:false,
+  stream:null, screenStream:null, micOn:true, camOn:true,
+  presenting:false, pinned:null, hand:false, captionsOn:false,
+  panel:null, unread:0, msgs:[], recording:false, recorder:null, recChunks:[], recSec:0,
+  meetSec:0, startedAt:0, timers:[], intervals:[], rafId:null,
+  actx:null, analyser:null, levelAvg:0, recognition:null, capIdx:0, devices:{mic:[],cam:[]},
+  appId:'lumina-meet-webrtc-v1', room:null, remoteScreen:null,
+};
+let P = [];
+let netActions = {};
+const PEER_PALETTE = [['#5b8cff','#7c5cff'],['#34d399','#22d3ee'],['#ff7ab8','#ffb86b'],['#f97316','#facc15'],['#a78bfa','#f472b6'],['#22d3ee','#0ea5e9']];
+function colorFor(id){ let h=0; for(let i=0;i<id.length;i++) h=(h*31+id.charCodeAt(i))>>>0; return PEER_PALETTE[h%PEER_PALETTE.length]; }
+const $ = id => document.getElementById(id);
+const initials = n => n.split(' ').filter(Boolean).map(w=>w[0]).slice(0,2).join('').toUpperCase();
+const later = (fn,ms)=>{ const t=setTimeout(fn,ms); state.timers.push(t); return t; };
+const every = (fn,ms)=>{ const t=setInterval(fn,ms); state.intervals.push(t); return t; };
+const refreshIcons = ()=> window.lucide && lucide.createIcons();
+const fmt = s => { const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60; return (h?String(h).padStart(2,'0')+':':'')+String(m).padStart(2,'0')+':'+String(x).padStart(2,'0'); };
+
+/* ============================================================
+   TOASTS
+============================================================ */
+function toast(msg, opts={}){
+  const el=document.createElement('div');
+  el.className='toast pointer-events-auto glass-deep rounded-2xl px-4 py-3 flex items-center gap-3 text-sm font-semibold shadow-2xl max-w-full';
+  el.innerHTML=`<span class="w-7 h-7 shrink-0 rounded-full grid place-items-center ${opts.color||'bg-[#5b8cff]/20 text-[#8ab4ff]'}"><i data-lucide="${opts.icon||'check'}" class="w-3.5 h-3.5"></i></span><span class="leading-snug">${msg}</span>${opts.action||''}`;
+  $('toasts').appendChild(el); refreshIcons();
+  setTimeout(()=>{ el.classList.add('out'); setTimeout(()=>el.remove(),320); }, opts.duration||4200);
+}
+function sound(freq=680,dur=.09){
+  try{
+    if(!state.actx) return;
+    const o=state.actx.createOscillator(), g=state.actx.createGain();
+    o.frequency.value=freq; o.type='sine'; g.gain.setValueAtTime(.12,state.actx.currentTime);
+    g.gain.exponentialRampToValueAtTime(.0001,state.actx.currentTime+dur);
+    o.connect(g).connect(state.actx.destination); o.start(); o.stop(state.actx.currentTime+dur);
+  }catch(e){}
+}
+
+/* ============================================================
+   CLOCKS
+============================================================ */
+function startClocks(){
+  const upd=()=>{
+    const d=new Date();
+    const t=d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+    const full=t+' · '+d.toLocaleDateString([], {weekday:'short',month:'short',day:'numeric'});
+    if($('clockHome')) $('clockHome').textContent=full;
+    if($('bottomClock')) $('bottomClock').textContent=t;
+  };
+  upd(); setInterval(upd,1000);
+}
+
+/* ============================================================
+   HOME / NAVIGATION
+============================================================ */
+const genCode = ()=>{ const r=n=>Array.from({length:n},()=>'abcdefghijklmnopqrstuvwxyz'[Math.random()*26|0]).join(''); return `${r(3)}-${r(4)}-${r(3)}`; };
+function showScreen(name){
+  ['home','lobby','meeting'].forEach(s=>$('screen-'+s).classList.add('hidden'));
+  $('screen-meeting').classList.remove('flex');
+  $('screen-'+name).classList.remove('hidden');
+  if(name==='meeting') $('screen-meeting').classList.add('flex');
+  document.title = name==='meeting' ? `Meet — ${state.code}` : 'Lumina Meet — Real-time learning, beautifully simple';
+  refreshIcons();
+}
+function syncJoinBtn(){
+  const v=$('joinCodeInput').value.trim();
+  const b=$('joinBtn');
+  b.disabled=!v;
+  b.className = 'btn-ctl text-sm font-bold px-4 py-2.5 rounded-xl transition ' + (v ? 'bg-[#4f7cff] text-white shadow-lg shadow-[#4f7cff]/30' : 'text-white/30');
+}
+function newMeeting(){
+  const code=genCode(); state.code=code; state.isHost=true;
+  openShareModal(code);
+}
+
+/* ============================================================
+   SHARING / INVITE LINKS
+============================================================ */
+let pendingCode=null;
+// Query params survive far more sharing paths (chat apps, SMS, email, link
+// previews) than a "#" fragment, which many platforms silently strip because
+// it's officially "client-only". We write query params, but still fall back
+// to reading an old-style "#join/<code>" hash for links generated earlier.
+function shareLink(code){
+  try{
+    const u=new URL(location.href);
+    u.hash=''; u.searchParams.set('join',code);
+    return u.toString();
+  }catch(e){ return `https://lumina.meet/?join=${code}`; }
+}
+function displayLink(code){
+  try{
+    const u=new URL(location.href);
+    u.hash=''; u.searchParams.set('join',code);
+    return u.host+u.pathname+u.search;
+  }catch(e){}
+  return `lumina.meet/?join=${code}`;
+}
+function openShareModal(code){
+  pendingCode=code;
+  $('shareLinkText').textContent=displayLink(code);
+  $('shareModal').classList.remove('hidden'); $('shareModal').classList.add('grid');
+  refreshIcons();
+}
+function closeShareModal(){ $('shareModal').classList.add('hidden'); $('shareModal').classList.remove('grid'); }
+function startFromModal(){ const c=pendingCode; closeShareModal(); enterLobby(c); }
+async function copyShareLink(code=pendingCode||state.code){
+  const link=shareLink(code);
+  const ok=()=>toast('Meeting link copied — send it to your class.',{icon:'link-2'});
+  try{ await navigator.clipboard.writeText(link); ok(); }
+  catch(e){ fallbackCopy(link,ok); }
+}
+function shareInvite(){
+  const code=pendingCode||state.code;
+  const data={ title:'Join my class on Lumina Meet', text:'Class is live — tap the link to join instantly:', url:shareLink(code) };
+  if(navigator.share){ navigator.share(data).catch(()=>{}); }
+  else copyShareLink(code);
+}
+function checkDeepLink(){
+  let code=null;
+  try{ code=new URL(location.href).searchParams.get('join'); }catch(e){}
+  if(!code){
+    const m=(location.hash||'').match(/join\/([a-z0-9-]{3,})/i);
+    if(m) code=m[1];
+  }
+  if(!code) return;
+  code=code.toLowerCase();
+  state.isHost=false;
+  setTimeout(()=>{
+    enterLobby(code);
+    later(()=>toast('You opened an invite link — add your name and hit <b>Join now</b>.',{icon:'sparkles',duration:6000}),700);
+  },350);
+}
+function joinFromInput(){
+  let v=$('joinCodeInput').value.trim().toLowerCase().replace('lumina.meet/','').replace(/^https?:\/\//,'').replace('lumina.meet/','');
+  if(!/^[a-z0-9-]{3,}$/.test(v)){ toast('That code does not look right. Try something like qmz-rdkp-tvh.',{icon:'info',color:'bg-[#ef4444]/20 text-[#ef4444]'}); return; }
+  state.isHost=false;
+  enterLobby(v);
+}
+
+/* ============================================================
+   LOBBY
+============================================================ */
+async function enterLobby(code){
+  state.code=code;
+  $('lobbyCode').textContent=code;
+  $('lobbyShareLink').textContent=displayLink(code);
+  $('lobbyRole').innerHTML=`<i data-lucide="${state.isHost?'star':'users'}" class="w-3.5 h-3.5"></i>${state.isHost?'You are the host of this class':'You join as a learner'}`;
+  $('lobbyRole').className=`inline-flex items-center gap-2 text-[11px] font-bold rounded-full px-3.5 py-2 ${state.isHost?'bg-[#f9ab00]/15 text-[#f9ab00]':'bg-[#4f7cff]/15 text-[#8ab4ff]'}`;
+  $('lobbyRoleNote').textContent=state.isHost?'Share the invite link so everyone can join.':'Check your mic and camera, then join the class.';
+  showScreen('lobby');
+  refreshIcons();
+  await initLobbyStream();
+}
+async function initLobbyStream(){
+  $('previewConnecting').classList.remove('hidden');
+  state.stream?.getTracks().forEach(t=>t.stop()); state.stream=null;
+  try{
+    const s=await navigator.mediaDevices.getUserMedia({audio:true,video:{width:{ideal:1280},height:{ideal:720}}});
+    state.stream=s;
+    $('previewVideo').srcObject=s;
+    initAudio(s);
+    cacheDevices();
+  }catch(e){
+    state.stream=null; state.micOn=false; state.camOn=false;
+    toast('Camera or microphone not available — you can still join.',{icon:'video-off',color:'bg-[#f9ab00]/20 text-[#f9ab00]'});
+  }
+  $('previewConnecting').classList.add('hidden');
+  syncLobbyPreview();
+}
+function syncLobbyPreview(){
+  const hasVideo = state.stream && state.stream.getVideoTracks().length && state.camOn;
+  $('previewVideo').style.opacity = hasVideo ? '1':'0';
+  $('previewAvatar').classList.toggle('hidden', !!hasVideo);
+  const name = ($('nameInput').value.trim()||'Guest');
+  $('previewInitials').textContent=initials(name);
+  $('previewName').textContent=name;
+  $('lobbyMicBtn').innerHTML=`<i data-lucide="${state.micOn?'mic':'mic-off'}" class="w-5.5 h-5.5"></i>`;
+  $('lobbyCamBtn').innerHTML=`<i data-lucide="${state.camOn?'video':'video-off'}" class="w-5.5 h-5.5"></i>`;
+  $('lobbyMicBtn').classList.toggle('bg-[#ea4335]', !state.micOn);
+  $('lobbyCamBtn').classList.toggle('bg-[#ea4335]', !state.camOn);
+  refreshIcons();
+}
+function syncNamePreview(){ const n=$('nameInput').value.trim()||'Guest'; $('previewName').textContent=n; $('previewInitials').textContent=initials(n); }
+function lobbyToggleMic(){ state.micOn=!state.micOn; enforceTracks(); syncLobbyPreview(); }
+function lobbyToggleCam(){ state.camOn=!state.camOn; enforceTracks(); syncLobbyPreview(); }
+function leaveLobby(){ state.stream?.getTracks().forEach(t=>t.stop()); state.stream=null; showScreen('home'); }
+function enforceTracks(){
+  if(!state.stream) return;
+  state.stream.getAudioTracks().forEach(t=>t.enabled=state.micOn);
+  state.stream.getVideoTracks().forEach(t=>t.enabled=state.camOn);
+}
+async function cacheDevices(){
+  try{
+    const ds=await navigator.mediaDevices.enumerateDevices();
+    state.devices.mic=ds.filter(d=>d.kind==='audioinput');
+    state.devices.cam=ds.filter(d=>d.kind==='videoinput');
+  }catch(e){}
+}
+
+/* ============================================================
+   AUDIO LEVEL (speaking ring)
+============================================================ */
+function initAudio(stream){
+  try{
+    if(!stream || !stream.getAudioTracks().length) return;
+    if(!state.actx) state.actx=new (window.AudioContext||window.webkitAudioContext)();
+    state.actx.resume?.();
+    const src=state.actx.createMediaStreamSource(stream);
+    state.analyser=state.actx.createAnalyser(); state.analyser.fftSize=256;
+    src.connect(state.analyser);
+    if(!state.rafId) levelLoop();
+  }catch(e){}
+}
+function levelLoop(){
+  state.rafId=requestAnimationFrame(levelLoop);
+  if(!state.analyser) return;
+  const data=new Uint8Array(state.analyser.frequencyBinCount);
+  state.analyser.getByteFrequencyData(data);
+  const level=data.reduce((a,b)=>a+b,0)/data.length/255;
+  state.levelAvg=state.levelAvg*.8+level*.2;
+  const you=P.find(p=>p.id==='you');
+  if(you){
+    const speaking = state.micOn && state.levelAvg>0.045;
+    if(speaking!==you.speaking){ you.speaking=speaking; updateTile(you); }
+  }
+}
+
+/* ============================================================
+   PEER NETWORKING (real multi-user connectivity)
+   Uses Trystero (bundled inline, Nostr-relay strategy) to find peers in the
+   same room code and set up direct WebRTC connections — no server of ours
+   is involved. Only works when this page can reach the open internet
+   (Claude's own sandboxed artifact preview blocks that, so this needs to be
+   hosted normally, e.g. your own site or opened as a local file).
+============================================================ */
+function myProfile(){
+  return { name: state.displayName, host: state.isHost, muted: !state.micOn, camOff: !state.camOn, hand: state.hand };
+}
+function broadcastProfile(){ try{ netActions.sendProfile && netActions.sendProfile(myProfile()); }catch(e){} }
+function setupRoom(){
+  if(typeof Trystero==='undefined' || !Trystero.joinRoom){
+    toast('Live networking library did not load — running in local-only preview mode.',{icon:'info',color:'bg-[#f9ab00]/20 text-[#f9ab00]'});
+    return;
+  }
+  try{
+    const room=Trystero.joinRoom({appId:state.appId},state.code);
+    state.room=room;
+    const [sendProfile,getProfile]=room.makeAction('profile');
+    const [sendChatMsg,getChatMsg]=room.makeAction('chat');
+    netActions={sendProfile,sendChatMsg};
+
+    room.onPeerJoin(peerId=>{
+      P.push({id:peerId,name:'Joining…',role:'Learner',c:colorFor(peerId),you:false,host:false,muted:true,camOff:true,speaking:false,hand:false,stream:null});
+      renderStructure();
+      sendProfile(myProfile(),peerId);
+      if(state.stream) room.addStream(state.stream,peerId);
+      if(state.presenting && state.screenStream) room.addStream(state.screenStream,peerId,{type:'screen'});
+    });
+    room.onPeerLeave(peerId=>{
+      const p=P.find(x=>x.id===peerId);
+      if(p) toast(`<b>${p.name}</b> left the class.`,{icon:'phone-off',color:'bg-white/10 text-white/60'});
+      P=P.filter(x=>x.id!==peerId);
+      if(state.pinned===peerId) state.pinned=null;
+      if(state.remoteScreen && state.remoteScreen.peerId===peerId) state.remoteScreen=null;
+      renderStructure();
+    });
+    getProfile((data,peerId)=>{
+      const p=P.find(x=>x.id===peerId); if(!p) return;
+      const wasNew=p.name==='Joining…';
+      p.name=(data.name||'Guest').toString().slice(0,30);
+      p.host=!!data.host; p.role=p.host?'Host':'Learner';
+      p.muted=!!data.muted; p.camOff=!!data.camOff; p.hand=!!data.hand;
+      renderStructure();
+      if(state.panel==='people') renderPeopleList('');
+      if(wasNew) toast(`<b>${p.name}</b> joined the class.`,{icon:'user-plus'});
+    });
+    getChatMsg((text,peerId)=>{
+      const p=P.find(x=>x.id===peerId);
+      addMessage({id:peerId,name:p?p.name:'Guest',c:p?p.c:['#5b8cff','#7c5cff']},text);
+    });
+    room.onPeerStream((stream,peerId,metadata)=>{
+      const p=P.find(x=>x.id===peerId); if(!p) return;
+      if(metadata && metadata.type==='screen'){
+        state.remoteScreen={peerId,stream};
+        const vt=stream.getVideoTracks()[0];
+        if(vt) vt.addEventListener('ended',()=>{ if(state.remoteScreen && state.remoteScreen.peerId===peerId){ state.remoteScreen=null; renderStructure(); } });
+      } else {
+        p.stream=stream;
+      }
+      renderStructure();
+    });
+  }catch(e){
+    toast('Could not reach the peer network — running in local-only preview mode.',{icon:'info',color:'bg-[#f9ab00]/20 text-[#f9ab00]'});
+  }
+}
+
+/* ============================================================
+   MEETING — JOIN
+============================================================ */
+async function joinMeeting(withPresent=false){
+  state.displayName=($('nameInput').value.trim()||'Guest').slice(0,30);
+  state.wantPresent=withPresent;
+  if(!state.stream){
+    try{ state.stream=await navigator.mediaDevices.getUserMedia({audio:true,video:true}); state.micOn=state.camOn=true; initAudio(state.stream); cacheDevices(); }
+    catch(e){ state.micOn=false; state.camOn=false; }
+  }
+  enforceTracks();
+  P=[ {id:'you',name:state.displayName,role:state.isHost?'Host':'Learner',c:['#5b8cff','#7c5cff'],you:true,host:state.isHost,muted:!state.micOn,camOff:!state.camOn,speaking:false,hand:false} ];
+  state.inMeeting=true; state.startedAt=Date.now(); state.meetSec=0; state.unread=0; state.panel=null; state.msgs=[];
+  $('meetCodeTxt').textContent=state.code; $('bottomCode').textContent=state.code;
+  showScreen('meeting');
+  renderStructure(); syncControlBtns(); updateCounts();
+  every(()=>{ state.meetSec++; $('meetClock').textContent=fmt(state.meetSec); },1000);
+  $('meetClock').textContent='00:00';
+  sound(720,.08);
+  toast(`You joined as <b>${state.displayName}</b>`,{icon:'video'});
+  if(state.isHost) later(()=>toast('You are the <b>host</b> — share the invite link to bring your class in.',{icon:'star',color:'bg-[#f9ab00]/20 text-[#f9ab00]',duration:6000}),1400);
+  setupRoom();
+  if(withPresent) later(()=>togglePresent(),600);
+}
+
+/* ============================================================
+   CONTROLS
+============================================================ */
+function setCtl(btn,iconOn,iconOff,on,tip){
+  btn.innerHTML=`<i data-lucide="${on?iconOn:iconOff}" class="w-5 h-5"></i>`;
+  btn.classList.toggle('bg-[#ea4335]', !on);
+  btn.classList.toggle('text-white', true);
+  btn.dataset.tip=tip;
+  refreshIcons();
+}
+function syncControlBtns(){
+  setCtl($('btnMic'),'mic','mic-off',state.micOn, state.micOn?'Turn off microphone':'Turn on microphone');
+  setCtl($('btnCam'),'video','video-off',state.camOn, state.camOn?'Turn off camera':'Turn on camera');
+  const pr=$('btnPresent');
+  pr.innerHTML=`<i data-lucide="monitor-up" class="w-5 h-5"></i>`;
+  pr.classList.toggle('bg-[#4f7cff]', state.presenting);
+  pr.dataset.tip=state.presenting?'Stop presenting':'Present now';
+  const hd=$('btnHand');
+  hd.innerHTML=`<i data-lucide="hand" class="w-5 h-5"></i>`;
+  hd.classList.toggle('bg-[#f9ab00]', state.hand); hd.classList.toggle('text-black', state.hand);
+  hd.dataset.tip=state.hand?'Lower hand':'Raise hand';
+  $('btnCc').classList.toggle('bg-white', state.captionsOn);
+  $('btnCc').classList.toggle('text-black', state.captionsOn);
+  $('handToast').classList.toggle('hidden', !state.hand);
+  $('presentBanner').classList.toggle('hidden', !state.presenting);
+  refreshIcons();
+}
+function toggleMic(){
+  state.micOn=!state.micOn;
+  if(!state.stream && state.micOn){ reacquire({audio:true}); return; }
+  enforceTracks();
+  P.find(p=>p.id==='you').muted=!state.micOn;
+  updateTile(P.find(p=>p.id==='you')); syncControlBtns();
+  broadcastProfile();
+  toast(state.micOn?'Microphone on':'Microphone off',{icon:state.micOn?'mic':'mic-off',duration:1600});
+}
+function toggleCam(){
+  state.camOn=!state.camOn;
+  if(!state.stream && state.camOn){ reacquire({video:true}); return; }
+  enforceTracks();
+  renderStructure(); syncControlBtns();
+  broadcastProfile();
+}
+async function reacquire(constraints){
+  try{
+    const s=await navigator.mediaDevices.getUserMedia({audio:constraints.audio??true,video:constraints.video??true});
+    state.stream=s; initAudio(s); enforceTracks();
+    P.find(p=>p.id==='you').muted=!state.micOn;
+    if(state.room) state.room.addStream(s);
+    renderStructure(); syncControlBtns();
+    broadcastProfile();
+  }catch(e){ toast('Permission denied by the browser.',{icon:'info',color:'bg-[#ef4444]/20 text-[#ef4444]'}); syncControlBtns(); }
+}
+function toggleHand(){
+  state.hand=!state.hand;
+  P.find(p=>p.id==='you').hand=state.hand;
+  updateTile(P.find(p=>p.id==='you')); syncControlBtns();
+  if(state.panel==='people') renderPanel();
+  broadcastProfile();
+  if(state.hand) toast('Your hand is raised — everyone in the class can see it.',{icon:'hand',color:'bg-[#f9ab00]/20 text-[#f9ab00]'});
+}
+function togglePresent(){
+  if(state.presenting){ stopPresent(); return; }
+  if(!navigator.mediaDevices?.getDisplayMedia){ toast('Screen sharing is not supported in this browser.',{icon:'info',color:'bg-[#ef4444]/20 text-[#ef4444]'}); return; }
+  navigator.mediaDevices.getDisplayMedia({video:{frameRate:{ideal:20}},audio:false}).then(s=>{
+    state.screenStream=s; state.presenting=true;
+    s.getVideoTracks()[0].addEventListener('ended',()=>stopPresent());
+    if(state.room) state.room.addStream(s,null,{type:'screen'});
+    renderStructure(); syncControlBtns();
+    toast('You are presenting to everyone.',{icon:'monitor-up'});
+  }).catch(()=>toast('Screen share was cancelled.',{icon:'monitor-up',color:'bg-white/10 text-white/60'}));
+}
+function stopPresent(){
+  if(state.room && state.screenStream){ try{ state.room.removeStream(state.screenStream); }catch(e){} }
+  state.screenStream?.getTracks().forEach(t=>t.stop());
+  state.screenStream=null; state.presenting=false;
+  renderStructure(); syncControlBtns();
+}
+
+/* ============================================================
+   CAPTIONS
+============================================================ */
+function toggleCaptions(){
+  state.captionsOn=!state.captionsOn;
+  $('captionBar').classList.toggle('hidden', !state.captionsOn);
+  $('btnCc').classList.toggle('bg-white', state.captionsOn);
+  $('btnCc').classList.toggle('text-black', state.captionsOn);
+  if(state.captionsOn){
+    $('captionText').textContent='Listening…';
+    startRecognition();
+  } else {
+    try{ state.recognition?.abort(); }catch(e){}
+  }
+}
+function setCaption(text,speaker){
+  if(!state.captionsOn||!text) return;
+  $('captionText').textContent=(speaker?speaker+': ':'')+text;
+}
+function startRecognition(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){ toast('Live captions are not supported in this browser — Chrome recommended.',{icon:'info'}); return; }
+  try{
+    const rec=new SR(); state.recognition=rec;
+    rec.lang='en-US'; rec.continuous=true; rec.interimResults=true;
+    let lastFinal='';
+    rec.onresult=e=>{
+      let interim='';
+      for(let i=e.resultIndex;i<e.results.length;i++){
+        const t=e.results[i][0].transcript;
+        if(e.results[i].isFinal) lastFinal=t; else interim+=t;
+      }
+      setCaption(interim||lastFinal,state.displayName.split(' ')[0]);
+    };
+    rec.onend=()=>{ if(state.captionsOn&&state.inMeeting){ try{rec.start()}catch(e){} } };
+    rec.onerror=()=>{};
+    rec.start();
+  }catch(e){}
+}
+
+/* ============================================================
+   RECORDING
+============================================================ */
+function toggleRecord(){
+  $('moreMenu').classList.add('hidden');
+  if(state.recording){ stopRecord(); return; }
+  try{
+    const tracks=[];
+    const v = state.presenting&&state.screenStream ? state.screenStream.getVideoTracks()[0] : state.stream?.getVideoTracks()[0];
+    if(v) tracks.push(v);
+    const a = state.stream?.getAudioTracks()[0];
+    if(a) tracks.push(a);
+    if(!tracks.length){ toast('Nothing to record — turn on your camera or share your screen first.',{icon:'info'}); return; }
+    let rec;
+    try{ rec=new MediaRecorder(new MediaStream(tracks),{mimeType:'video/webm;codecs=vp9,opus'}); }
+    catch(e){ rec=new MediaRecorder(new MediaStream(tracks)); }
+    state.recorder=rec; state.recChunks=[]; state.recSec=0;
+    rec.ondataavailable=e=>{ if(e.data.size) state.recChunks.push(e.data); };
+    rec.onstop=downloadRecording;
+    rec.start(1000);
+    state.recording=true;
+    $('recBadge').classList.remove('hidden'); $('recBadge').classList.add('flex'); $('recLabel').textContent='Stop recording';
+    every(()=>{ state.recSec++; $('recTime').textContent=fmt(state.recSec); },1000);
+    toast(`Recording started — ${state.presenting?'capturing your shared screen':'capturing your camera and mic'}.`,{icon:'circle',color:'bg-[#ef4444]/20 text-[#ef4444]'});
+  }catch(e){ toast('Recording is not supported in this browser.',{icon:'info',color:'bg-[#ef4444]/20 text-[#ef4444]'}); }
+}
+function stopRecord(){
+  if(!state.recording) return;
+  state.recording=false;
+  try{ state.recorder.stop(); }catch(e){}
+  $('recBadge').classList.add('hidden'); $('recBadge').classList.remove('flex'); $('recLabel').textContent='Start recording';
+}
+function downloadRecording(){
+  const blob=new Blob(state.recChunks,{type:'video/webm'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=`lumina-meet-${state.code.replaceAll('-','')}.webm`; a.textContent='Download recording'; a.className='ml-2 shrink-0 text-[11px] font-extrabold bg-[#4f7cff] rounded-full px-3 py-1.5 hover:bg-[#6090ff]';
+  toast('Recording saved.',{icon:'check',action:a.outerHTML,duration:12000});
+}
+
+/* ============================================================
+   TILES / RENDERING
+============================================================ */
+function avatarInner(p,big){
+  return `<div class="absolute inset-0 avatar-fx grid place-items-center" style="background:linear-gradient(135deg,${p.c[0]},${p.c[1]})">
+    <div class="${big?'w-28 h-28 text-4xl':'w-14 h-14 md:w-20 md:h-20 text-lg md:text-2xl'} rounded-full bg-black/25 grid place-items-center font-extrabold backdrop-blur-sm">${initials(p.name)}</div>
+    <div class="sheen"></div></div>`;
+}
+function tileHTML(p,small=false){
+  const camOn = p.you
+    ? (state.camOn && state.stream && state.stream.getVideoTracks().length)
+    : (p.stream && p.stream.getVideoTracks().length && !p.camOff);
+  const vsrc = p.you ? 'self' : `peer:${p.id}`;
+  return `<div class="tile group relative rounded-2xl overflow-hidden hairline bg-[#10131b] cursor-pointer ${small?'w-[168px] md:w-full h-[104px] md:h-[126px] shrink-0':'h-full w-full'}" data-pid="${p.id}">
+    ${camOn ? `<video data-src="${vsrc}" autoplay playsinline ${p.you?'muted':''} class="absolute inset-0 w-full h-full object-cover ${p.you?'mirror':''}"></video>` : avatarInner(p)}
+    <div class="chip-mic ${p.muted?'':'hidden'} absolute right-3 top-3 w-6 h-6 grid place-items-center rounded-full bg-black/60 backdrop-blur"><i data-lucide="mic-off" class="w-3 h-3 text-[#ff8a80]"></i></div>
+    <div class="chip-hand ${p.hand?'':'hidden'} absolute right-3 top-3 w-7 h-7 grid place-items-center rounded-full bg-[#f9ab00] text-black shadow-lg"><i data-lucide="hand" class="w-3.5 h-3.5"></i></div>
+    <span class="absolute left-3 bottom-3 text-[11px] font-bold bg-black/55 backdrop-blur rounded-full px-3 py-1.5 flex items-center gap-1.5">${p.host?'<i data-lucide="star" class="w-3 h-3 text-[#f9ab00]"></i>':''}${p.you?p.name+' (You)':p.name}</span>
+    <div class="vb-wrap hidden absolute right-3 bottom-4 items-end gap-[3px] bg-black/45 rounded-full px-2 py-1.5"><span class="vbar"></span><span class="vbar"></span><span class="vbar"></span></div>
+    <button onclick="event.stopPropagation();pinTile('${p.id}')" class="tip opacity-0 group-hover:opacity-100 transition absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 glass-deep rounded-full px-4 py-2 text-xs font-bold flex items-center gap-2" data-tip="Pin"><i data-lucide="pin" class="w-3.5 h-3.5"></i>Pin</button>
+  </div>`;
+}
+function screenHTML(remotePeer){
+  if(remotePeer){
+    return `<div class="tile relative rounded-2xl overflow-hidden hairline bg-black h-full w-full">
+      <video data-src="remoteScreen" autoplay playsinline class="absolute inset-0 w-full h-full object-contain bg-black"></video>
+      <span class="absolute left-3 top-3 text-[11px] font-bold bg-black/60 backdrop-blur rounded-full px-3 py-1.5 flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-[#2dd4bf] animate-pulse"></span>${remotePeer.name} is presenting</span>
+    </div>`;
+  }
+  return `<div class="tile relative rounded-2xl overflow-hidden hairline bg-black h-full w-full">
+    <video data-src="screen" autoplay playsinline muted class="absolute inset-0 w-full h-full object-contain bg-black"></video>
+    <span class="absolute left-3 top-3 text-[11px] font-bold bg-black/60 backdrop-blur rounded-full px-3 py-1.5 flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-[#2dd4bf] animate-pulse"></span>Your screen · You are presenting</span>
+  </div>`;
+}
+function renderStructure(){
+  const remoteScreenPeer = state.remoteScreen ? P.find(p=>p.id===state.remoteScreen.peerId) : null;
+  const spotlight = state.presenting || (state.remoteScreen && remoteScreenPeer) || state.pinned;
+  $('grid').classList.toggle('hidden', !!spotlight);
+  $('spotWrap').classList.toggle('hidden', !spotlight);
+  $('spotWrap').classList.toggle('flex', !!spotlight);
+  if(!spotlight){
+    const n=P.length, w=innerWidth;
+    const cols = n===1?1 : n===2?(w>700?2:1) : n<=4?2 : n<=9?(w>760?3:2) : 4;
+    const rows = Math.ceil(n/cols);
+    const g=$('grid');
+    g.style.gridTemplateColumns=`repeat(${cols},minmax(0,1fr))`;
+    g.style.gridTemplateRows=`repeat(${rows},minmax(0,1fr))`;
+    g.innerHTML=P.map(p=>tileHTML(p)).join('');
+  } else {
+    $('spotSlot').innerHTML = state.presenting ? screenHTML(null) : (remoteScreenPeer ? screenHTML(remoteScreenPeer) : tileHTML(P.find(p=>p.id===state.pinned)||P[0]));
+    $('rail').innerHTML = P.map(p=>tileHTML(p,true)).join('');
+  }
+  attachVideos(); refreshIcons(); updateCounts();
+}
+function attachVideos(){
+  document.querySelectorAll('video[data-src="self"]').forEach(v=>{ if(v.srcObject!==state.stream){ v.srcObject=state.stream; } });
+  document.querySelectorAll('video[data-src="screen"]').forEach(v=>{ if(state.screenStream && v.srcObject!==state.screenStream){ v.srcObject=state.screenStream; } });
+  document.querySelectorAll('video[data-src="remoteScreen"]').forEach(v=>{ if(state.remoteScreen && v.srcObject!==state.remoteScreen.stream){ v.srcObject=state.remoteScreen.stream; } });
+  document.querySelectorAll('video[data-src^="peer:"]').forEach(v=>{
+    const pid=v.dataset.src.slice(5);
+    const p=P.find(x=>x.id===pid);
+    if(p && p.stream && v.srcObject!==p.stream) v.srcObject=p.stream;
+  });
+}
+function updateTile(p){
+  document.querySelectorAll(`[data-pid="${p.id}"]`).forEach(el=>{
+    el.classList.toggle('speaking', !!p.speaking);
+    el.querySelector('.vb-wrap')?.classList.toggle('hidden', !p.speaking);
+    el.querySelector('.vb-wrap')?.classList.toggle('flex', !!p.speaking);
+    const mic=el.querySelector('.chip-mic'); if(mic) mic.classList.toggle('hidden', !p.muted);
+    const hand=el.querySelector('.chip-hand'); if(hand) hand.classList.toggle('hidden', !p.hand);
+  });
+}
+function pinTile(id){ state.pinned = state.pinned===id?null:id; renderStructure(); }
+function updateCounts(){ $('meetCount').textContent=P.length; if(state.panel==='people') renderPanel(); }
+
+/* ============================================================
+   CHAT
+============================================================ */
+function appendBubble(r){
+  const el=document.createElement('div');
+  el.className='flex gap-2.5 '+(r.me?'flex-row-reverse':'');
+  el.innerHTML=`<div class="w-7 h-7 shrink-0 rounded-full grid place-items-center text-[9px] font-extrabold" style="background:linear-gradient(135deg,${r.c[0]},${r.c[1]})">${initials(r.name)}</div>
+    <div class="max-w-[78%] ${r.me?'text-right':''}">
+      <p class="text-[10px] font-bold text-white/35 mb-1">${r.me?'You':r.name} · ${r.time}</p>
+      <p class="text-[13px] font-medium leading-relaxed px-4 py-2.5 rounded-2xl ${r.me?'bg-[#4f7cff] rounded-tr-md text-white':'bg-white/8 rounded-tl-md text-white/90'}">${r.text}</p>
+    </div>`;
+  $('chatEmpty')?.remove();
+  const list=$('chatList');
+  if(list){ list.appendChild(el); list.scrollTop=list.scrollHeight; }
+}
+function addMessage(from,text){
+  const me=from.id==='you';
+  const who = me? {name:state.displayName,c:['#5b8cff','#7c5cff']} : from;
+  const r={ me, name:who.name, c:who.c, text, time:new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) };
+  state.msgs.push(r);
+  appendBubble(r);
+  if(state.panel!=='chat'&&state.inMeeting){ state.unread++; const b=$('unreadBadge'); b.textContent=state.unread; b.classList.remove('hidden'); sound(520,.05); }
+}
+function sendChat(){
+  const inp=$('chatInput'); const t=inp.value.trim(); if(!t) return;
+  inp.value='';
+  const clean=t.replace(/[<>]/g,'');
+  addMessage({id:'you'},clean);
+  try{ netActions.sendChatMsg && netActions.sendChatMsg(clean); }catch(e){}
+}
+
+/* ============================================================
+   SIDE PANELS
+============================================================ */
+function openPanel(name){
+  state.panel = state.panel===name?null:name;
+  if(state.panel){
+    $('panel').classList.remove('hidden'); $('panel').classList.add('flex','panel-in');
+    renderPanel();
+    if(state.panel==='chat'){ state.unread=0; $('unreadBadge').classList.add('hidden'); }
+  } else { $('panel').classList.add('hidden'); $('panel').classList.remove('flex'); }
+  ['people','chat','info'].forEach(k=>$('btn'+k[0].toUpperCase()+k.slice(1)).classList.toggle('text-[#8ab4ff]', state.panel===k));
+  refreshIcons();
+}
+function renderPanel(){
+  if(!state.panel) return;
+  const heads={people:['users','Everyone'],chat:['message-square','In-call messages'],info:['info','Meeting details']};
+  const [icon,title]=heads[state.panel];
+  let body='';
+  if(state.panel==='chat'){
+    body=`<div id="chatList" class="flex-1 overflow-y-auto p-4 space-y-4"></div>
+      <div class="p-3 border-t border-white/8">
+        <div class="glass rounded-2xl flex items-center gap-2 pl-4 pr-1.5 py-1.5 focus-within:border-[#5b8cff]/50">
+          <input id="chatInput" onkeydown="if(event.key==='Enter')sendChat()" placeholder="Send a message" class="flex-1 bg-transparent text-sm font-medium py-2 placeholder:text-white/30" maxlength="300">
+          <button onclick="sendChat()" class="btn-ctl w-9 h-9 grid place-items-center rounded-xl bg-[#4f7cff]"><i data-lucide="send" class="w-4 h-4"></i></button>
+        </div>
+        <p class="text-[10px] text-white/30 font-semibold mt-2 text-center">Messages are visible to everyone in the class</p>
+      </div>`;
+  } else if(state.panel==='people'){
+    body=`<div class="p-3 border-b border-white/8"><div class="glass rounded-2xl flex items-center gap-2 px-4 py-2.5"><i data-lucide="search" class="w-4 h-4 text-white/35"></i><input oninput="renderPeopleList(this.value)" placeholder="Search people" class="flex-1 bg-transparent text-sm font-medium placeholder:text-white/30"></div></div>
+      <div id="peopleList" class="flex-1 overflow-y-auto p-3 space-y-1"></div>`;
+  } else {
+    body=`<div class="flex-1 overflow-y-auto p-5 space-y-5">
+      <div class="glass rounded-2xl p-4">
+        <p class="text-[10px] font-bold tracking-[0.15em] text-white/35 mb-2">JOINING LINK</p>
+        <p class="text-sm font-bold text-[#8ab4ff] mb-3 truncate" title="${displayLink(state.code)}">${displayLink(state.code)}</p>
+        <button onclick="copyInfo()" class="btn-ctl w-full flex items-center justify-center gap-2 bg-white/8 hover:bg-white/14 font-bold text-xs py-3 rounded-xl"><i data-lucide="copy" class="w-3.5 h-3.5"></i> Copy joining info</button>
+      </div>
+      <div class="glass rounded-2xl p-4 space-y-3">
+        <p class="flex justify-between text-xs font-semibold"><span class="text-white/40">Subject</span><span>Online Learning Session</span></p>
+        <p class="flex justify-between text-xs font-semibold"><span class="text-white/40">Host</span><span>${state.isHost?'You':'The meeting creator'}</span></p>
+        <p class="flex justify-between text-xs font-semibold"><span class="text-white/40">You joined as</span><span>${state.displayName}</span></p>
+        <p class="flex justify-between text-xs font-semibold"><span class="text-white/40">Your role</span><span class="${state.isHost?'text-[#f9ab00]':''}">${state.isHost?'Host':'Learner'}</span></p>
+        <p class="flex justify-between text-xs font-semibold"><span class="text-white/40">Duration</span><span id="infoDur" class="tabular-nums">${fmt(state.meetSec)}</span></p>
+      </div>
+      <p class="text-[11px] text-white/35 font-medium flex items-start gap-2"><i data-lucide="shield-check" class="w-4 h-4 text-[#2dd4bf] shrink-0"></i>Only people with this code can join. Media stays on your device until you share it.</p>
+    </div>`;
+  }
+  $('panel').innerHTML=`<div class="flex items-center justify-between px-5 py-4 border-b border-white/8 shrink-0">
+      <p class="font-extrabold text-[15px] flex items-center gap-2.5"><i data-lucide="${icon}" class="w-4.5 h-4.5 text-white/50"></i>${title}${state.panel==='people'?` <span class="text-white/35 text-xs font-bold">(${P.length})</span>`:''}</p>
+      <button onclick="openPanel('${state.panel}')" class="btn-ctl w-8 h-8 grid place-items-center rounded-full hover:bg-white/10"><i data-lucide="x" class="w-4 h-4"></i></button>
+    </div>${body}`;
+  refreshIcons();
+  if(state.panel==='people') renderPeopleList('');
+  if(state.panel==='chat'){
+    state.msgs.forEach(appendBubble);
+    if(!state.msgs.length&&$('chatList')) $('chatList').innerHTML=`<div id="chatEmpty" class="h-full grid place-items-center py-14 text-center"><div><div class="w-12 h-12 mx-auto rounded-2xl bg-white/6 grid place-items-center mb-3"><i data-lucide="message-square" class="w-5 h-5 text-white/30"></i></div><p class="text-sm font-bold text-white/45">No messages yet</p><p class="text-xs text-white/30 font-medium mt-1 max-w-[210px]">Messages you send here are visible to everyone in the class.</p></div></div>`;
+    refreshIcons();
+    const l=$('chatList'); if(l) l.scrollTop=l.scrollHeight; $('chatInput').focus();
+  }
+}
+function renderPeopleList(q){
+  const list=$('peopleList'); if(!list) return;
+  const sorted=[...P].sort((a,b)=>(b.hand-a.hand)||(b.host-a.host)||(a.you?-1:1));
+  list.innerHTML=sorted.filter(p=>p.name.toLowerCase().includes(q.toLowerCase())).map(p=>`
+    <div class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/6">
+      <div class="relative">
+        <div class="w-9 h-9 rounded-full grid place-items-center text-[10px] font-extrabold ${p.speaking?'ring-2 ring-[#43d68c]':''}" style="background:linear-gradient(135deg,${p.you?'#5b8cff,#7c5cff':p.c[0]+','+p.c[1]})">${initials(p.name)}</div>
+        ${p.hand?'<span class="absolute -bottom-1 -right-1 w-[18px] h-[18px] grid place-items-center rounded-full bg-[#f9ab00]"><i data-lucide="hand" class="w-2.5 h-2.5 text-black"></i></span>':''}
+      </div>
+      <div class="flex-1 min-w-0"><p class="text-sm font-bold truncate">${p.name}${p.you?' (You)':''}</p><p class="text-[10px] font-bold text-white/35">${p.host?'HOST · TEACHER':(p.role||'LEARNER').toUpperCase()}</p></div>
+      ${p.muted?'<i data-lucide="mic-off" class="w-4 h-4 text-[#ff8a80]"></i>':'<i data-lucide="mic" class="w-4 h-4 text-[#43d68c]"></i>'}
+    </div>`).join('');
+  refreshIcons();
+}
+
+/* ============================================================
+   MISC UI
+============================================================ */
+function toggleMore(e){ e.stopPropagation(); $('moreMenu').classList.toggle('hidden'); }
+document.addEventListener('click',e=>{ if(!$('moreMenu').classList.contains('hidden') && !e.target.closest('#btnMore')) $('moreMenu').classList.add('hidden'); });
+function copyInfo(){
+  const txt=`Join my class on Lumina Meet: ${shareLink(state.code)}`;
+  const done=()=>toast('Joining info copied to clipboard.',{icon:'copy'});
+  if(navigator.clipboard?.writeText) navigator.clipboard.writeText(txt).then(done).catch(()=>fallbackCopy(txt,done));
+  else fallbackCopy(txt,done);
+}
+function fallbackCopy(txt,cb){ const ta=document.createElement('textarea'); ta.value=txt; document.body.appendChild(ta); ta.select(); try{document.execCommand('copy')}catch(e){} ta.remove(); cb(); }
+function openSettings(){
+  $('moreMenu').classList.add('hidden');
+  const fill=(sel,list)=>{ sel.innerHTML=(list.length?list:[{label:'Default device',deviceId:''}]).map((d,i)=>`<option value="${d.deviceId}">${d.label||'Device '+(i+1)}</option>`).join(''); };
+  fill($('micSelect'),state.devices.mic); fill($('camSelect'),state.devices.cam);
+  $('settingsModal').classList.remove('hidden'); $('settingsModal').classList.add('grid'); refreshIcons();
+}
+function closeSettings(){ $('settingsModal').classList.add('hidden'); $('settingsModal').classList.remove('grid'); }
+async function applyDevices(){
+  const mic=$('micSelect').value, cam=$('camSelect').value;
+  closeSettings();
+  try{
+    const s=await navigator.mediaDevices.getUserMedia({
+      audio: mic?{deviceId:{exact:mic}}:true,
+      video: cam?{deviceId:{exact:cam}}:true,
+    });
+    state.stream?.getTracks().forEach(t=>t.stop());
+    state.stream=s; initAudio(s); enforceTracks();
+    if(state.room) state.room.addStream(s);
+    renderStructure();
+    broadcastProfile();
+    toast('Devices updated.',{icon:'settings'});
+  }catch(e){ toast('Could not switch devices — check permissions.',{icon:'info',color:'bg-[#ef4444]/20 text-[#ef4444]'}); }
+}
+
+/* ============================================================
+   LEAVE
+============================================================ */
+function leaveMeeting(){
+  stopRecord();
+  stopPresent();
+  try{ state.room?.leave(); }catch(e){}
+  state.room=null; netActions={}; state.remoteScreen=null;
+  try{ state.recognition?.abort(); }catch(e){}
+  state.captionsOn=false;
+  state.stream?.getTracks().forEach(t=>t.stop());
+  state.stream=null;
+  state.timers.forEach(clearTimeout); state.intervals.forEach(clearInterval);
+  state.timers=[]; state.intervals=[];
+  state.inMeeting=false; state.presenting=false; state.pinned=null; state.hand=false; state.panel=null;
+  state.micOn=true; state.camOn=true; state.unread=0;
+  P=[]; $('grid').innerHTML=''; $('rail').innerHTML=''; $('spotSlot').innerHTML=''; $('panel').classList.add('hidden'); $('panel').classList.remove('flex');
+  $('unreadBadge').classList.add('hidden'); $('handToast').classList.add('hidden'); $('recBadge').classList.add('hidden'); $('recBadge').classList.remove('flex');
+  $('captionBar').classList.add('hidden');
+  $('btnCc').classList.remove('bg-white','text-black');
+  showScreen('home');
+  toast('You left the meeting.',{icon:'phone-off',color:'bg-[#ef4444]/20 text-[#ef4444]'});
+}
+
+/* ============================================================
+   KEYBOARD SHORTCUTS + PARALLAX
+============================================================ */
+document.addEventListener('keydown',e=>{
+  if(!state.inMeeting) return;
+  const k=e.key.toLowerCase();
+  if((e.ctrlKey||e.metaKey)&&k==='d'){ e.preventDefault(); toggleMic(); }
+  if((e.ctrlKey||e.metaKey)&&k==='e'){ e.preventDefault(); toggleCam(); }
+  if(k==='escape'){ if(state.panel) openPanel(state.panel); }
+});
+function initParallax(){
+  const card=$('heroCard'); if(!card) return;
+  const wrap=card.parentElement;
+  wrap.addEventListener('mousemove',e=>{
+    const r=wrap.getBoundingClientRect();
+    const x=(e.clientX-r.left)/r.width-.5, y=(e.clientY-r.top)/r.height-.5;
+    card.style.transform=`perspective(1100px) rotateY(${x*10}deg) rotateX(${-y*8}deg)`;
+  });
+  wrap.addEventListener('mouseleave',()=>{ card.style.transition='transform .8s cubic-bezier(.22,1,.36,1)'; card.style.transform='perspective(1100px) rotateY(0) rotateX(0)'; setTimeout(()=>card.style.transition='',800); });
+}
+
+/* ============================================================
+   BOOT
+============================================================ */
+addEventListener('resize',()=>{ if(state.inMeeting) renderStructure(); });
+startClocks(); initParallax(); refreshIcons(); checkDeepLink();
+</script>
+</body>
+</html>
